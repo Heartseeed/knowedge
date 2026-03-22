@@ -1,0 +1,19 @@
+# Supabase Edge Functions Configuration
+# This file is for local development only
+
+[functions.sync-notes]
+# The sync-notes function handles note synchronization
+# Deploy with: supabase functions deploy sync-notes
+
+# Import map for Deno dependencies
+# This is used by the Supabase CLI
+
+[[imports]]
+  attr = "std/http/server"
+  url = "https://deno.land/std@0.177.0/http/server.ts"
+  version = "0.177.0"
+
+[[imports]]
+  attr = "@supabase/supabase-js"
+  url = "https://esm.sh/@supabase/supabase-js@2"
+  version = "2"

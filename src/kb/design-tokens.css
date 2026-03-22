@@ -1,0 +1,18 @@
+:root {
+  --kb-bg: #f7f8fa;
+  --kb-surface: #ffffff;
+  --kb-text: #1f2937;
+  --kb-muted: #6b7280;
+  --kb-primary: #4f46e5;
+  --kb-radius: 12px;
+  --kb-space: 12px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --kb-bg: #0b1020;
+    --kb-surface: #14172b;
+    --kb-text: #e5e7eb;
+    --kb-muted: #9ca3af;
+  }
+}
+/* simple utility classes for kb components can reuse these tokens */

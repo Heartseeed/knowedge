@@ -1,0 +1,377 @@
+/* ================================================================
+   KnowEdge Knowledge Base — Full Three-Column Layout
+   ================================================================ */
+
+/* KB CSS Variables (extends root ke-* tokens) */
+.kb-root {
+  /* Layout */
+  --kb-grid-gap: 16px;
+  --kb-left-w: 260px;
+  --kb-right-w: 360px;
+
+  /* Surfaces */
+  --kb-bg: var(--ke-bg, #f8f9fc);
+  --kb-surface: var(--ke-bg-elevated, #ffffff);
+  --kb-surface-hover: var(--ke-bg-hover, #eef1f7);
+  --kb-surface-subtle: var(--ke-bg-subtle, #f1f3f8);
+
+  /* Text */
+  --kb-text: var(--ke-text-primary, #1a1d26);
+  --kb-text-secondary: var(--ke-text-secondary, #5a6274);
+  --kb-text-muted: var(--ke-text-muted, #9aa0b0);
+
+  /* Borders */
+  --kb-border: var(--ke-border, #e4e7ef);
+  --kb-border-light: var(--ke-border-light, #f0f2f7);
+
+  /* Accent */
+  --kb-primary: var(--ke-primary, #6366f1);
+  --kb-primary-hover: var(--ke-primary-hover, #4f46e5);
+  --kb-primary-light: var(--ke-primary-light, #eef2ff);
+
+  /* Status */
+  --kb-success: var(--ke-success, #22c55e);
+  --kb-warning: var(--ke-warning, #f59e0b);
+  --kb-danger: var(--ke-danger, #ef4444);
+
+  /* Spacing & Shape */
+  --kb-space: 12px;
+  --kb-radius: 10px;
+  --kb-radius-sm: 6px;
+  --kb-radius-lg: 14px;
+  --kb-radius-full: 9999px;
+
+  /* Shadows */
+  --kb-shadow: var(--ke-shadow-sm, 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03));
+  --kb-shadow-md: var(--ke-shadow-md, 0 4px 12px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.04));
+
+  /* Transitions */
+  --kb-transition: 150ms ease;
+
+  /* Note type colors */
+  --kb-type-concept: #6366f1;
+  --kb-type-reading: #0ea5e9;
+  --kb-type-practice: #22c55e;
+  --kb-type-idea: #f59e0b;
+  --kb-type-card: #ec4899;
+}
+
+/* Dark theme overrides */
+[data-theme="dark"] .kb-root,
+.kb-root[data-theme="dark"] {
+  --kb-bg: #0f1117;
+  --kb-surface: #1a1d26;
+  --kb-surface-hover: #252836;
+  --kb-surface-subtle: #14161e;
+  --kb-text: #f0f2f7;
+  --kb-text-secondary: #9aa0b0;
+  --kb-text-muted: #6b7280;
+  --kb-border: #2d3142;
+  --kb-border-light: #252836;
+}
+
+/* ================================================================
+   Layout
+   ================================================================ */
+
+.kb-root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--kb-bg);
+}
+
+.kb-layout {
+  display: grid;
+  grid-template-columns: var(--kb-left-w) 1fr var(--kb-right-w);
+  gap: var(--kb-grid-gap);
+  flex: 1;
+  min-height: 0;
+  padding: 0 var(--kb-grid-gap) var(--kb-grid-gap);
+}
+
+/* ================================================================
+   Left Navigation
+   ================================================================ */
+
+.kb-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.kb-left__section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.kb-left__section + .kb-left__section {
+  border-top: 1px solid var(--kb-border-light);
+  padding-top: 10px;
+  margin-top: 4px;
+}
+
+.kb-section-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--kb-text-muted);
+  padding: 0 10px 4px;
+}
+
+/* Nav items */
+.kb-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--kb-radius-sm);
+  font-size: 0.875rem;
+  color: var(--kb-text-secondary);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  transition: all var(--kb-transition);
+  position: relative;
+}
+
+.kb-nav-item:hover {
+  background: var(--kb-surface-hover);
+  color: var(--kb-text);
+}
+
+.kb-nav-item--active {
+  background: var(--kb-primary-light);
+  color: var(--kb-primary);
+  font-weight: 600;
+}
+
+.kb-nav-item--active:hover {
+  background: var(--kb-primary-light);
+  color: var(--kb-primary-hover);
+}
+
+.kb-nav-item__icon {
+  font-size: 0.9rem;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.kb-nav-item__label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kb-nav-item__count {
+  font-size: 0.7rem;
+  background: var(--kb-surface-subtle);
+  color: var(--kb-text-muted);
+  padding: 1px 6px;
+  border-radius: var(--kb-radius-full);
+  font-weight: 600;
+  min-width: 20px;
+  text-align: center;
+}
+
+.kb-nav-item--active .kb-nav-item__count {
+  background: var(--kb-primary);
+  color: white;
+}
+
+/* Folder tree */
+.kb-folder-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.kb-folder-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: var(--kb-radius-sm);
+  font-size: 0.875rem;
+  color: var(--kb-text-secondary);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  transition: all var(--kb-transition);
+}
+
+.kb-folder-btn:hover {
+  background: var(--kb-surface-hover);
+  color: var(--kb-text);
+}
+
+.kb-folder-btn--active {
+  background: var(--kb-primary-light);
+  color: var(--kb-primary);
+  font-weight: 600;
+}
+
+.kb-folder-btn__icon { font-size: 0.9rem; }
+.kb-folder-btn__label { flex: 1; }
+
+/* Quick add folder */
+.kb-add-folder-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  font-size: 0.8rem;
+  color: var(--kb-text-muted);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  border-radius: var(--kb-radius-sm);
+  transition: all var(--kb-transition);
+  width: 100%;
+}
+
+.kb-add-folder-btn:hover {
+  color: var(--kb-primary);
+  background: var(--kb-primary-light);
+}
+
+/* Tags */
+.kb-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 2px 0;
+}
+
+.kb-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  font-size: 0.75rem;
+  background: var(--kb-surface-subtle);
+  border: 1px solid var(--kb-border-light);
+  border-radius: var(--kb-radius-full);
+  color: var(--kb-text-secondary);
+  cursor: pointer;
+  transition: all var(--kb-transition);
+}
+
+.kb-tag:hover {
+  background: var(--kb-primary-light);
+  border-color: var(--kb-primary);
+  color: var(--kb-primary);
+}
+
+.kb-tag--active {
+  background: var(--kb-primary);
+  border-color: var(--kb-primary);
+  color: white;
+}
+
+.kb-tag__count {
+  font-size: 0.65rem;
+  opacity: 0.75;
+}
+
+/* Left nav scrollable area */
+.kb-left__scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+}
+
+/* Scrollbar */
+.kb-left__scroll::-webkit-scrollbar { width: 4px; }
+.kb-left__scroll::-webkit-scrollbar-track { background: transparent; }
+.kb-left__scroll::-webkit-scrollbar-thumb { background: var(--kb-border); border-radius: 2px; }
+.kb-left__scroll::-webkit-scrollbar-thumb:hover { background: var(--kb-text-muted); }
+
+/* ================================================================
+   Center Panel — Note List + Editor
+   ================================================================ */
+
+.kb-center {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  gap: 12px;
+}
+
+.kb-center__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--kb-border-light);
+  flex-shrink: 0;
+}
+
+.kb-center__title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--kb-text-muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.kb-center__count {
+  font-size: 0.7rem;
+  color: var(--kb-text-muted);
+  background: var(--kb-surface-subtle);
+  padding: 1px 7px;
+  border-radius: var(--kb-radius-full);
+}
+
+.kb-center__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.kb-icon-btn {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--kb-text-muted);
+  border-radius: var(--kb-radius-sm);
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all var(--kb-transition);
+}
+
+.kb-icon-btn:hover {
+  background: var(--kb-surface-hover);
+  color: var(--kb-text);
+}
+
+.kb-icon-btn--primary {
+  background: var(--kb-primary);
+  color: white;
+  font-size: 0.8rem;
+}
+
+.kb-icon-btn--primary:hover {
+  background: var(--kb-primary-hover);
+  color: white;
+}
+
+/* 
