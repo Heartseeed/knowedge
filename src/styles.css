@@ -148,6 +148,47 @@ body { font-family: var(--ke-font-sans); background: var(--ke-bg); color: var(--
 .ke-header__theme-btn:hover { background: var(--ke-bg-hover); border-color: var(--ke-text-muted); color: var(--ke-text-primary); }
 .ke-header__theme-label { font-size: 0.8rem; }
 
+/* Sync Status Indicator */
+.ke-header__sync-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: var(--ke-radius-md);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--ke-transition);
+}
+
+.ke-header__sync-status--local {
+  background: rgba(100, 116, 139, 0.1);
+  color: var(--ke-text-muted);
+  border: 1px solid var(--ke-border);
+}
+
+.ke-header__sync-status--local:hover {
+  background: rgba(37, 99, 235, 0.1);
+  border-color: var(--ke-primary);
+  color: var(--ke-primary);
+}
+
+.ke-header__sync-status--syncing {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.ke-header__sync-status--synced {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.ke-header__sync-label {
+  font-size: 0.75rem;
+}
+
 /* 返回按钮 */
 .ke-header__back-btn {
   display: inline-flex; align-items: center; justify-content: center;

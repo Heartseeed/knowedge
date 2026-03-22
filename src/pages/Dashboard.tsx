@@ -22,6 +22,9 @@ interface DashboardProps {
   onCapture?: (content: string) => void
   onShowSearch?: () => void
   onOpenSettings?: () => void
+  syncStatus?: 'local' | 'syncing' | 'synced'
+  onAuthClick?: () => void
+  currentUser?: { email?: string } | null
 }
 
 // Compute heatmap data from notes (last 365 days)
@@ -123,6 +126,9 @@ const Dashboard: React.FC<DashboardProps> = ({
   onNoteSelect,
   onCapture,
   onOpenSettings,
+  syncStatus,
+  onAuthClick,
+  currentUser,
 }) => {
   const [allNotes, setAllNotes] = useState<Note[]>(externalNotes)
   const [searchQuery, setSearchQuery] = useState('')
@@ -231,7 +237,13 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   return (
     <div className="ke-app">
-      <Header onCapture={() => setCaptureOpen(true)} onSettingsClick={onOpenSettings} />
+      <Header 
+  onCapture={() => setCaptureOpen(true)} 
+  onSettingsClick={onOpenSettings}
+  onAuthClick={onAuthClick}
+  currentUser={currentUser}
+  syncStatus={syncStatus}
+/>
 
       <main className="ke-main">
         <div className="ke-dashboard">

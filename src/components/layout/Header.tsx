@@ -53,9 +53,10 @@ interface HeaderProps {
   onSettingsClick?: () => void
   onAuthClick?: () => void
   currentUser?: { email?: string } | null
+  syncStatus?: 'local' | 'syncing' | 'synced'
 }
 
-const Header: React.FC<HeaderProps> = ({ onCapture, showBack, onBack, onLogoClick, onSettingsClick, onAuthClick, currentUser }) => {
+const Header: React.FC<HeaderProps> = ({ onCapture, showBack, onBack, onLogoClick, onSettingsClick, onAuthClick, currentUser, syncStatus = 'local' }) => {
   // 初始化时从 DOM 读取当前主题
   const [theme, setTheme] = useState<Theme>(() => {
     const current = document.documentElement.getAttribute('data-theme') as Theme
@@ -109,6 +110,36 @@ const Header: React.FC<HeaderProps> = ({ onCapture, showBack, onBack, onLogoClic
           {THEME_ICONS[theme]}
           <span className="ke-header__theme-label">{THEME_LABELS[theme]}</span>
         </button>
+
+        {/* Sync Status Indicator */}
+        <div 
+          className={`ke-header__sync-status ke-header__sync-status--${syncStatus}`}
+          onClick={onAuthClick}
+          title={
+            syncStatus === 'local' ? '本地存储 - 点击登录以启用云同步' :
+            syncStatus === 'syncing' ? '同步中...' :
+            '已同步到云端 - 点击查看账号'
+          }
+        >
+          {syncStatus === 'local' && (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M21 12a9 9 0 11-6.219-8.56"/>
+            </svg>
+          )}
+          {syncStatus === 'syncing' && (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="ke-spin">
+              <path d="M21 12a9 9 0 11-6.219-8.56"/>
+            </svg>
+          )}
+          {syncStatus === 'synced' && (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M20 6L9 17l-5-5"/>
+            </svg>
+          )}
+          <span className="ke-header__sync-label">
+            {syncStatus === 'local' ? '本地' : syncStatus === 'syncing' ? '同步中' : '已同步'}
+          </span>
+        </div>
 
         <button
           className={`ke-header__avatar ${currentUser ? 'ke-header__avatar--logged-in' : ''}`}

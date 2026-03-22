@@ -61,6 +61,7 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [notes, setNotes] = useState<Note[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [syncStatus, setSyncStatus] = useState<'local' | 'syncing' | 'synced'>('local')
   const [needsAuth, setNeedsAuth] = useState(false)
   const initDoneRef = useRef(false)
 
@@ -70,7 +71,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const init = async () => {
       try {
-        // Initialize IndexedDB
+        // Initialize IndexedDB (always required)
         await initDB.init()
         let allNotes = await initDB.getAllNotes()
 
@@ -80,21 +81,20 @@ const App: React.FC = () => {
           console.log(`[App] Cleaned up ${deletedCount} old deleted notes`)
         }
 
-        // Initialize Supabase sync
+        // Generate sample notes if database is empty
+        if (allNotes.length === 0) {
+          const sampleNotes = await getSampleNotes()
+          allNotes = sampleNotes
+        }
+
+        // Initialize Supabase sync (non-blocking)
         await supabaseSyncManager.init()
         
-        // Initialize auth and listen for changes
+        // Initialize auth and listen for changes (non-blocking)
         const user = await initAuth()
         setCurrentUser(user)
         
-        // If Supabase is configured but no user, require auth
-        if (supabaseConfigured && !user) {
-          setNeedsAuth(true)
-          setIsLoading(false)
-          return
-        }
-        
-        // If user exists, set up sync
+        // If user exists, set up sync in background
         if (user) {
           const supabase = getSupabase()
           if (supabase) {
@@ -102,7 +102,9 @@ const App: React.FC = () => {
             if (session?.access_token) {
               supabaseSyncManager.setUser(user.id, session.access_token)
               await supabaseSyncManager.enable()
+              setSyncStatus('synced')
               
+              // Sync in background
               const config = await getSyncConfig()
               if (config.enabled && navigator.onLine) {
                 const result = await supabaseSyncManager.sync(allNotes, async (merged) => {
@@ -124,10 +126,10 @@ const App: React.FC = () => {
         const unsubscribeAuth = onAuthChange(async (user) => {
           setCurrentUser(user)
           if (!user) {
-            setNeedsAuth(true)
+            setSyncStatus('local')
             supabaseSyncManager.clearUser()
           } else {
-            setNeedsAuth(false)
+            setSyncStatus('synced')
             const supabase = getSupabase()
             if (supabase) {
               const { data: { session } } = await supabase.auth.getSession()
@@ -147,12 +149,6 @@ const App: React.FC = () => {
             }
           }
         })
-
-        // Generate sample notes if database is empty (only for non-authenticated users)
-        if (allNotes.length === 0 && !user) {
-          const sampleNotes = await getSampleNotes()
-          allNotes = sampleNotes
-        }
 
         setNotes(allNotes)
         setIsLoading(false)
@@ -332,6 +328,9 @@ const App: React.FC = () => {
             onCapture={() => {}}
             onShowSearch={() => setShowSearch(true)}
             onOpenSettings={() => setShowSettings(true)}
+            syncStatus={syncStatus}
+            onAuthClick={() => setShowAuth(true)}
+            currentUser={currentUser}
           />
         ) : currentView === 'review' ? (
           <ReviewPage
@@ -363,6 +362,7 @@ const App: React.FC = () => {
             onSettingsClick={() => setShowSettings(true)}
             onAuthClick={() => setShowAuth(true)}
             currentUser={currentUser}
+            syncStatus={syncStatus}
           />
         )}
       </KnowledgeBaseProvider>

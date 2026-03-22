@@ -18,6 +18,7 @@ interface KBMainProps {
   onSettingsClick?: () => void
   onAuthClick?: () => void
   currentUser?: { email?: string } | null
+  syncStatus?: 'local' | 'syncing' | 'synced'
 }
 
 const mockFolders: Folder[] = [
@@ -307,6 +308,7 @@ const KBMain: React.FC<KBMainProps> = ({
   onSettingsClick,
   onAuthClick,
   currentUser,
+  syncStatus,
 }) => {
   // 优先使用外部传入的 notes，其次自己加载
   const [notes, setNotes] = useState<Note[]>(externalNotes.length > 0 ? externalNotes : [])
@@ -558,6 +560,7 @@ const KBMain: React.FC<KBMainProps> = ({
         onSettingsClick={onSettingsClick}
         onAuthClick={onAuthClick}
         currentUser={currentUser}
+        syncStatus={syncStatus}
       />
 
       <div className="kb-body">
