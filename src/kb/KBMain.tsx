@@ -16,6 +16,8 @@ interface KBMainProps {
   onNotesChange?: (notes: Note[]) => void
   onCapture?: (content: string) => void
   onSettingsClick?: () => void
+  onAuthClick?: () => void
+  currentUser?: { email?: string } | null
 }
 
 const mockFolders: Folder[] = [
@@ -303,6 +305,8 @@ const KBMain: React.FC<KBMainProps> = ({
   onNotesChange,
   onCapture,
   onSettingsClick,
+  onAuthClick,
+  currentUser,
 }) => {
   // 优先使用外部传入的 notes，其次自己加载
   const [notes, setNotes] = useState<Note[]>(externalNotes.length > 0 ? externalNotes : [])
@@ -552,6 +556,8 @@ const KBMain: React.FC<KBMainProps> = ({
         onBack={onBackToDashboard}
         onLogoClick={onBackToDashboard}
         onSettingsClick={onSettingsClick}
+        onAuthClick={onAuthClick}
+        currentUser={currentUser}
       />
 
       <div className="kb-body">

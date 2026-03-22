@@ -1,39 +1,42 @@
 /**
  * Supabase Edge Function: sync-notes
  * 
- * Handles note synchronization between clients and Supabase database.
- * 
- * Features:
- * - Receives notes from client
- * - Merges with existing notes (last-write-wins)
- * - Returns merged notes to client
- * - Tracks sync vectors for incremental sync
+ * Handles note synchronization with multi-user support.
+ * - Authenticates users via JWT
+ * - Filters notes by user_id
+ * - Supports full sync and incremental sync
  */
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-// Types
 interface Note {
   id: string
+  user_id?: string
   title: string
   content?: unknown
   plain_text?: string
   type?: string
+  status?: string
+  folderId?: string
   tags?: string[]
   links?: string[]
-  is_favorite?: boolean
+  starred?: boolean
+  pinned?: boolean
   is_deleted?: boolean
+  deletedAt?: number
+  reviewCount?: number
+  nextReviewAt?: number
+  easeFactor?: number
+  interval?: number
   createdAt?: number
   updatedAt?: number
-  deletedAt?: number
 }
 
 interface SyncRequest {
   notes: Note[]
-  clientId: string
+  userId: string
   lastSync: number | null
-  vector: Record<string, number>
 }
 
 interface SyncResponse {
@@ -46,66 +49,112 @@ interface SyncResponse {
 // Environment
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const DATABASE_URL = Deno.env.get('DATABASE_URL')!
 
-// Create Supabase client with service role (admin access)
+// Create Supabase client with service role (bypasses RLS)
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   db: { type: 'postgres', schema: 'public' },
 })
 
+// CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
 /**
- * Fetch all notes from database
+ * Verify JWT token and extract user ID
  */
-async function fetchAllNotes(): Promise<Note[]> {
-  const { data, error } = await supabase
+async function verifyToken(authHeader: string): Promise<string | null> {
+  try {
+    const token = authHeader.replace('Bearer ', '')
+    const { data: { user }, error } = await supabase.auth.getUser(token)
+    if (error || !user) return null
+    return user.id
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Fetch notes for a specific user
+ */
+async function fetchUserNotes(userId: string, lastSync: number | null): Promise<Note[]> {
+  let query = supabase
     .from('notes')
     .select('*')
+    .eq('user_id', userId)
     .eq('is_deleted', false)
-  
+
+  if (lastSync) {
+    query = query.gt('updated_at', new Date(lastSync).toISOString())
+  }
+
+  const { data, error } = await query
+
   if (error) {
     console.error('Error fetching notes:', error)
     return []
   }
-  
+
   return data.map(row => ({
-    id: row.id,
+    id: row.local_id || row.id,
+    user_id: row.user_id,
     title: row.title,
     content: row.content,
     plain_text: row.plain_text,
     type: row.type,
+    status: row.status,
+    folderId: row.folder_id,
     tags: row.tags || [],
     links: row.links || [],
-    is_favorite: row.is_favorite,
+    starred: row.starred,
+    pinned: row.pinned,
     is_deleted: row.is_deleted,
+    deletedAt: row.deleted_at ? new Date(row.deleted_at).getTime() : undefined,
+    reviewCount: row.review_count,
+    nextReviewAt: row.next_review_at ? new Date(row.next_review_at).getTime() : undefined,
+    easeFactor: row.ease_factor,
+    interval: row.interval_days,
     createdAt: new Date(row.created_at).getTime(),
     updatedAt: new Date(row.updated_at).getTime(),
-    deletedAt: row.deleted_at ? new Date(row.deleted_at).getTime() : undefined,
   }))
 }
 
 /**
  * Upsert notes to database
  */
-async function upsertNotes(notes: Note[]): Promise<void> {
+async function upsertNotes(notes: Note[], userId: string): Promise<void> {
   if (notes.length === 0) return
-  
+
   const rows = notes.map(note => ({
-    id: note.id,
+    id: note.id.startsWith('sample-') || note.id.startsWith('n_') || note.id.startsWith('local_')
+      ? undefined  // Let DB generate new UUID
+      : note.id,
+    user_id: userId,
+    local_id: note.id,
     title: note.title || 'Untitled',
     content: note.content || {},
     plain_text: note.plain_text || '',
     type: note.type || 'concept',
+    status: note.status || 'inbox',
+    folder_id: note.folderId || null,
     tags: note.tags || [],
     links: note.links || [],
-    is_favorite: note.is_favorite || false,
+    starred: note.starred || false,
+    pinned: note.pinned || false,
     is_deleted: note.is_deleted || false,
     deleted_at: note.deletedAt ? new Date(note.deletedAt).toISOString() : null,
+    review_count: note.reviewCount || 0,
+    next_review_at: note.nextReviewAt ? new Date(note.nextReviewAt).toISOString() : null,
+    ease_factor: note.easeFactor || 2.5,
+    interval_days: note.interval || 1,
+    updated_at: new Date(note.updatedAt || Date.now()).toISOString(),
   }))
-  
+
   const { error } = await supabase
     .from('notes')
-    .upsert(rows, { onConflict: 'id' })
-  
+    .upsert(rows, { onConflict: 'local_id' })
+
   if (error) {
     console.error('Error upserting notes:', error)
     throw error
@@ -117,20 +166,17 @@ async function upsertNotes(notes: Note[]): Promise<void> {
  */
 function mergeNotes(local: Note[], remote: Note[]): Note[] {
   const merged = new Map<string, Note>()
-  
-  // Create maps for quick lookup
+
   const localMap = new Map(local.map(n => [n.id, n]))
   const remoteMap = new Map(remote.map(n => [n.id, n]))
-  
-  // Process all unique IDs
+
   const allIds = new Set([...localMap.keys(), ...remoteMap.keys()])
-  
+
   for (const id of allIds) {
     const localNote = localMap.get(id)
     const remoteNote = remoteMap.get(id)
-    
+
     if (localNote && remoteNote) {
-      // Both exist - keep the newer one
       const localTime = localNote.updatedAt || 0
       const remoteTime = remoteNote.updatedAt || 0
       merged.set(id, localTime >= remoteTime ? localNote : remoteNote)
@@ -140,24 +186,16 @@ function mergeNotes(local: Note[], remote: Note[]): Note[] {
       merged.set(id, remoteNote)
     }
   }
-  
+
   return Array.from(merged.values())
 }
 
-// Handle CORS preflight
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
-  
+
   try {
-    // Get auth header
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
       return new Response(
@@ -165,46 +203,53 @@ serve(async (req) => {
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
-    
-    // Parse request
+
+    // Verify token and get user ID
+    const userId = await verifyToken(authHeader)
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     const request: SyncRequest = await req.json()
-    const { notes: localNotes, clientId } = request
-    
-    console.log(`Sync request from ${clientId} with ${localNotes.length} notes`)
-    
-    // Fetch all remote notes
-    const remoteNotes = await fetchAllNotes()
+    const { notes: localNotes, userId: requestUserId, lastSync } = request
+
+    console.log(`Sync for user ${requestUserId}: ${localNotes.length} local notes, last sync: ${lastSync}`)
+
+    // Fetch user's notes from server
+    const remoteNotes = await fetchUserNotes(requestUserId, lastSync)
     console.log(`Found ${remoteNotes.length} remote notes`)
-    
+
     // Merge notes
     const mergedNotes = mergeNotes(localNotes, remoteNotes)
     console.log(`Merged to ${mergedNotes.length} notes`)
-    
-    // Upsert merged notes
-    await upsertNotes(mergedNotes)
-    
-    // Return merged notes with server time
+
+    // Save merged notes to server
+    await upsertNotes(mergedNotes, requestUserId)
+
     const serverTime = Date.now()
-    
+
     const response: SyncResponse = {
       success: true,
       notes: mergedNotes,
       serverTime,
     }
-    
+
     return new Response(JSON.stringify(response), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (error) {
     console.error('Sync error:', error)
-    
+
     const response: SyncResponse = {
       success: false,
       notes: [],
       serverTime: Date.now(),
       error: error instanceof Error ? error.message : 'Unknown error',
     }
-    
+
     return new Response(JSON.stringify(response), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

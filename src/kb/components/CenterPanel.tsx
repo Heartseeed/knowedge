@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import TipTapEditor, { TipTapEditorHandle } from '../../components/TipTapEditor'
+import { VersionHistoryPanel } from '../../components/VersionHistoryPanel'
+import type { NoteSnapshot } from '../../db/indexeddb'
 import { 
   Edit3, Columns, Eye, Plus, Brain, BookOpen, FlaskConical, 
   Lightbulb, StickyNote, FileText, Clock, CheckCircle2, 
@@ -8,7 +10,7 @@ import {
   Undo, Redo, Bold, Italic, Underline as UnderlineIcon, Strikethrough,
   AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Quote,
   Code, CodeSquare, Link2Icon, Minus, Highlighter, Pin, Trash2, RotateCcw, Trash, ChevronDown,
-  Paperclip, Star
+  Paperclip, Star, History
 } from 'lucide-react'
 import type { Note, ViewMode, NoteType } from '../types'
 import { initDB } from '../../db/indexeddb'
@@ -107,6 +109,7 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null)
   const [showTypeDropdown, setShowTypeDropdown] = useState(false)
+  const [showVersionHistory, setShowVersionHistory] = useState(false)
   const saveTimeoutRef = useRef<number | null>(null)
   const pendingNoteRef = useRef<Note | null>(null)
   const editorRef = useRef<TipTapEditorHandle>(null)
@@ -300,6 +303,9 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
               </button>
               <button className="kb-inline-toolbar__btn" title="插入文件" onClick={() => editorRef.current?.openAttachmentPicker()}>
                 <Paperclip size={15} />
+              </button>
+              <button className="kb-inline-toolbar__btn" title="历史版本" onClick={() => setShowVersionHistory(true)}>
+                <History size={15} />
               </button>
               <button className="kb-inline-toolbar__btn" title="分隔线" onClick={() => editorRef.current?.setHorizontalRule()}>
                 <Minus size={15} />
@@ -580,6 +586,25 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
           )}
         </div>
       </div>
+
+      {/* Version History Panel */}
+      {showVersionHistory && selectedNote && (
+        <VersionHistoryPanel
+          note={selectedNote}
+          onClose={() => setShowVersionHistory(false)}
+          onRestore={(snapshot) => {
+            if (snapshot) {
+              handleNoteUpdate({
+                ...selectedNote,
+                content: snapshot.content,
+                contentMarkdown: snapshot.contentMarkdown,
+                updatedAt: Date.now(),
+              })
+              setShowVersionHistory(false)
+            }
+          }}
+        />
+      )}
     </main>
   )
 }

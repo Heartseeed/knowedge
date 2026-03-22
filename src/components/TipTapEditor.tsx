@@ -396,6 +396,28 @@ const TipTapEditor = forwardRef<TipTapEditorHandle, TipTapEditorProps>(({
     return md.trim()
   }, [])
 
+  // Handle version restore
+  const handleRestoreVersion = useCallback((snapshot: NoteSnapshot) => {
+    if (!editor || !note) return
+    
+    // Create a snapshot of current state before restoring
+    createSnapshot(note, 'restore').then(() => {
+      // Restore the selected version
+      editor.commands.setContent(snapshot.content)
+      const markdown = htmlToMarkdown(snapshot.content)
+      setMarkdownContent(markdown)
+      
+      onChange({
+        ...note,
+        content: snapshot.content,
+        contentMarkdown: snapshot.contentMarkdown || markdown,
+        updatedAt: Date.now(),
+      })
+      
+      lastSnapshotTimeRef.current = Date.now()
+    })
+  }, [editor, note, onChange, htmlToMarkdown])
+
   // Handle markdown mode changes
   const handleMarkdownChange = useCallback((md: string) => {
     setMarkdownContent(md)

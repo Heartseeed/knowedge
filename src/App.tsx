@@ -7,9 +7,11 @@ import TimelinePage from './pages/TimelinePage'
 import { KnowledgeBaseProvider } from './kb/KBProvider'
 import SearchModal from './components/SearchModal'
 import SettingsModal from './components/SettingsModal'
+import AuthModal from './components/AuthModal'
 import { initDB, type Note, getSampleNotes, cleanupTrash } from './db/indexeddb'
 import { supabaseSyncManager, getSyncConfig } from './db/sync-supabase'
-import { isSupabaseConfigured } from './supabase/client'
+import { isSupabaseConfigured, getSupabase } from './supabase/client'
+import { initAuth, getCurrentUser, onAuthChange, signOut } from './supabase/auth'
 import { exportToJson, importFromJson } from './db/sync'
 import './styles.css'
 
@@ -21,15 +23,48 @@ const generateId = (prefix: string = 'n'): string => {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`
 }
 
+// Auth-gated wrapper component
+const AuthGate: React.FC<{ children: React.ReactNode; onLoginClick: () => void; isConfigured: boolean }> = ({ children, onLoginClick, isConfigured }) => {
+  return (
+    <div className="ke-auth-gate">
+      <div className="ke-auth-gate__content">
+        <div className="ke-auth-gate__logo">
+          <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+            <circle cx="32" cy="32" r="30" stroke="#6366f1" strokeWidth="4"/>
+            <path d="M20 32 L28 40 L44 24" stroke="#6366f1" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+        <h1 className="ke-auth-gate__title">KnowEdge 知域</h1>
+        <p className="ke-auth-gate__desc">请登录以继续使用</p>
+        {isConfigured ? (
+          <button className="ke-btn ke-btn--primary ke-btn--lg" onClick={onLoginClick}>
+            登录 / 注册
+          </button>
+        ) : (
+          <div className="ke-auth-gate__error">
+            <p>云端同步功能未配置</p>
+            <p>请联系管理员配置 Supabase</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('dashboard')
   const [previousView, setPreviousView] = useState<View | null>(null)
   const [selectedNoteId, setSelectedNoteId] = useState<string | undefined>()
   const [showSearch, setShowSearch] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [showAuth, setShowAuth] = useState(false)
+  const [currentUser, setCurrentUser] = useState<any>(null)
   const [notes, setNotes] = useState<Note[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [needsAuth, setNeedsAuth] = useState(false)
   const initDoneRef = useRef(false)
+
+  const supabaseConfigured = isSupabaseConfigured()
 
   // Initialize database and sync on mount
   useEffect(() => {
@@ -45,38 +80,86 @@ const App: React.FC = () => {
           console.log(`[App] Cleaned up ${deletedCount} old deleted notes`)
         }
 
-        // Generate sample notes if database is empty
-        if (allNotes.length === 0) {
+        // Initialize Supabase sync
+        await supabaseSyncManager.init()
+        
+        // Initialize auth and listen for changes
+        const user = await initAuth()
+        setCurrentUser(user)
+        
+        // If Supabase is configured but no user, require auth
+        if (supabaseConfigured && !user) {
+          setNeedsAuth(true)
+          setIsLoading(false)
+          return
+        }
+        
+        // If user exists, set up sync
+        if (user) {
+          const supabase = getSupabase()
+          if (supabase) {
+            const { data: { session } } = await supabase.auth.getSession()
+            if (session?.access_token) {
+              supabaseSyncManager.setUser(user.id, session.access_token)
+              await supabaseSyncManager.enable()
+              
+              const config = await getSyncConfig()
+              if (config.enabled && navigator.onLine) {
+                const result = await supabaseSyncManager.sync(allNotes, async (merged) => {
+                  // Save merged notes to IndexedDB
+                  for (const note of merged) {
+                    await initDB.putNote(note)
+                  }
+                  allNotes = merged
+                })
+                if (result.merged && result.notes.length > 0) {
+                  allNotes = result.notes
+                }
+              }
+            }
+          }
+        }
+        
+        // Subscribe to auth changes
+        const unsubscribeAuth = onAuthChange(async (user) => {
+          setCurrentUser(user)
+          if (!user) {
+            setNeedsAuth(true)
+            supabaseSyncManager.clearUser()
+          } else {
+            setNeedsAuth(false)
+            const supabase = getSupabase()
+            if (supabase) {
+              const { data: { session } } = await supabase.auth.getSession()
+              if (session?.access_token) {
+                supabaseSyncManager.setUser(user.id, session.access_token)
+                await supabaseSyncManager.enable()
+                const currentNotes = await initDB.getAllNotes()
+                const result = await supabaseSyncManager.sync(currentNotes, async (merged) => {
+                  for (const note of merged) {
+                    await initDB.putNote(note)
+                  }
+                })
+                if (result.notes.length > 0) {
+                  setNotes(result.notes)
+                }
+              }
+            }
+          }
+        })
+
+        // Generate sample notes if database is empty (only for non-authenticated users)
+        if (allNotes.length === 0 && !user) {
           const sampleNotes = await getSampleNotes()
           allNotes = sampleNotes
         }
 
-        // Initialize Supabase sync
-        await supabaseSyncManager.init()
-
-        // Subscribe to sync state changes (UI indicator removed; keep background sync)
-        const unsubscribe = supabaseSyncManager.subscribe(() => {
-          // no UI sync indicator; keep background sync alive
-        })
-
-        const config = await getSyncConfig()
-        if (isSupabaseConfigured() && !config.enabled) {
-          await supabaseSyncManager.enable()
-        }
-        const currentConfig = await getSyncConfig()
-        if (currentConfig.enabled && navigator.onLine) {
-          const result = await supabaseSyncManager.sync(allNotes, (merged) => {
-            // no-op: background sync handled by manager
-          })
-          if (result.merged && result.notes.length > 0) {
-            allNotes = result.notes
-          }
-        }
         setNotes(allNotes)
         setIsLoading(false)
         initDoneRef.current = true
+        
         return () => {
-          unsubscribe()
+          unsubscribeAuth?.()
         }
       } catch (err) {
         console.error('[App] Initialization error:', err)
@@ -84,7 +167,7 @@ const App: React.FC = () => {
       }
     }
     init()
-  }, [])
+  }, [supabaseConfigured])
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -102,7 +185,6 @@ const App: React.FC = () => {
   }, [showSearch])
 
   const navigate = useCallback((view: string, noteId?: string) => {
-    // Track previous view for navigation back
     if (view === 'graph' || view === 'timeline') {
       setPreviousView(currentView)
     }
@@ -136,7 +218,17 @@ const App: React.FC = () => {
     setSelectedNoteId(newNote.id)
     setCurrentView('knowledge-base')
     setShowSearch(false)
-  }, [])
+    
+    // Trigger sync after creating note
+    if (currentUser) {
+      supabaseSyncManager.markPending()
+      const config = await getSyncConfig()
+      if (config.enabled) {
+        const updatedNotes = await initDB.getAllNotes()
+        await supabaseSyncManager.sync(updatedNotes)
+      }
+    }
+  }, [currentUser])
 
   // Export / Import helpers
   const handleExport = useCallback(async () => {
@@ -155,13 +247,14 @@ const App: React.FC = () => {
   const handleSync = useCallback(async () => {
     try {
       const currentConfig = await getSyncConfig()
-      if (currentConfig.enabled && navigator.onLine) {
-        const result = await supabaseSyncManager.sync(notes, (merged) => {
-          if (merged) {
-            setNotes(merged)
+      if (currentConfig.enabled && navigator.onLine && currentUser) {
+        const result = await supabaseSyncManager.sync(notes, async (merged) => {
+          for (const note of merged) {
+            await initDB.putNote(note)
           }
+          setNotes(merged)
         })
-        if (result.merged && result.notes.length > 0) {
+        if (result.notes.length > 0) {
           setNotes(result.notes)
         }
         return { success: true, message: '同步完成' }
@@ -171,7 +264,62 @@ const App: React.FC = () => {
       console.error('[App] Sync error:', err)
       return { success: false, message: '同步失败' }
     }
-  }, [notes])
+  }, [notes, currentUser])
+
+  // Handle successful auth
+  const handleAuthSuccess = useCallback(async () => {
+    const user = getCurrentUser()
+    setCurrentUser(user)
+    setNeedsAuth(false)
+    
+    if (user) {
+      const supabase = getSupabase()
+      if (supabase) {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.access_token) {
+          supabaseSyncManager.setUser(user.id, session.access_token)
+          await supabaseSyncManager.enable()
+          
+          // Sync after login
+          const currentNotes = await initDB.getAllNotes()
+          const result = await supabaseSyncManager.sync(currentNotes, async (merged) => {
+            for (const note of merged) {
+              await initDB.putNote(note)
+            }
+          })
+          if (result.notes.length > 0) {
+            setNotes(result.notes)
+          }
+        }
+      }
+    }
+  }, [])
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="ke-app ke-app--loading">
+        <div className="ke-loading">
+          <div className="ke-loading__spinner"></div>
+          <p>加载中...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Auth required state
+  if (needsAuth && supabaseConfigured) {
+    return (
+      <div className="ke-app">
+        <AuthGate onLoginClick={() => setShowAuth(true)} isConfigured={supabaseConfigured} />
+        <AuthModal
+          isOpen={showAuth}
+          onClose={() => setShowAuth(false)}
+          onAuthSuccess={handleAuthSuccess}
+        />
+      </div>
+    )
+  }
 
   return (
     <div className="ke-app">
@@ -213,6 +361,8 @@ const App: React.FC = () => {
             onNotesChange={setNotes}
             onCapture={() => {}}
             onSettingsClick={() => setShowSettings(true)}
+            onAuthClick={() => setShowAuth(true)}
+            currentUser={currentUser}
           />
         )}
       </KnowledgeBaseProvider>
@@ -233,6 +383,13 @@ const App: React.FC = () => {
         onClose={() => setShowSettings(false)}
         onNotesImported={handleImport}
         onSyncTrigger={handleSync}
+      />
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={showAuth}
+        onClose={() => setShowAuth(false)}
+        onAuthSuccess={handleAuthSuccess}
       />
     </div>
   )

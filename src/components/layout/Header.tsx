@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { BrandCompact } from '../dashboard/BrandLogo'
+import { User } from 'lucide-react'
 
 type Theme = 'light' | 'beige' | 'dark'
 const THEMES: Theme[] = ['light', 'beige', 'dark']
@@ -50,9 +51,11 @@ interface HeaderProps {
   onBack?: () => void
   onLogoClick?: () => void
   onSettingsClick?: () => void
+  onAuthClick?: () => void
+  currentUser?: { email?: string } | null
 }
 
-const Header: React.FC<HeaderProps> = ({ onCapture, showBack, onBack, onLogoClick, onSettingsClick }) => {
+const Header: React.FC<HeaderProps> = ({ onCapture, showBack, onBack, onLogoClick, onSettingsClick, onAuthClick, currentUser }) => {
   // 初始化时从 DOM 读取当前主题
   const [theme, setTheme] = useState<Theme>(() => {
     const current = document.documentElement.getAttribute('data-theme') as Theme
@@ -108,15 +111,18 @@ const Header: React.FC<HeaderProps> = ({ onCapture, showBack, onBack, onLogoClic
         </button>
 
         <button
-          className="ke-header__avatar"
-          onClick={onSettingsClick}
-          title="个人中心与设置"
-          aria-label="个人中心与设置"
+          className={`ke-header__avatar ${currentUser ? 'ke-header__avatar--logged-in' : ''}`}
+          onClick={onAuthClick || onSettingsClick}
+          title={currentUser ? `已登录: ${currentUser.email}` : '点击登录账号'}
+          aria-label="账号管理"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-            <circle cx="12" cy="7" r="4"/>
-          </svg>
+          {currentUser ? (
+            <span className="ke-header__user-email">
+              {currentUser.email?.charAt(0).toUpperCase() || <User size={16} />}
+            </span>
+          ) : (
+            <User size={16} />
+          )}
         </button>
       </div>
     </header>
