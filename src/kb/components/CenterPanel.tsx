@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import TipTapEditor, { TipTapEditorHandle } from '../../components/TipTapEditor'
 import { VersionHistoryPanel } from '../../components/VersionHistoryPanel'
+import { ColorPicker } from '../../components/ColorPicker'
+import { FindReplaceModal } from '../../components/FindReplaceModal'
 import type { NoteSnapshot } from '../../db/indexeddb'
 import { 
   Edit3, Columns, Eye, Plus, Brain, BookOpen, FlaskConical, 
@@ -10,7 +12,7 @@ import {
   Undo, Redo, Bold, Italic, Underline as UnderlineIcon, Strikethrough,
   AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Quote,
   Code, CodeSquare, Link2Icon, Minus, Highlighter, Pin, Trash2, RotateCcw, Trash, ChevronDown,
-  Paperclip, Star, History, X
+  Paperclip, Star, History, X, Search, Replace
 } from 'lucide-react'
 import type { Note, ViewMode, NoteType } from '../types'
 import { initDB } from '../../db/indexeddb'
@@ -108,19 +110,18 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
   const [editorMode, setEditorMode] = useState<EditorMode>('rich')
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
   
-  // Split view second note
-  const [splitNoteId, setSplitNoteId] = useState<string | null>(null)
-  const splitNote = splitNoteId ? notes.find(n => n.id === splitNoteId) : null
+
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null)
   const [showTypeDropdown, setShowTypeDropdown] = useState(false)
   const [showVersionHistory, setShowVersionHistory] = useState(false)
+  const [showFindReplace, setShowFindReplace] = useState(false)
   const [showCreateDropdown, setShowCreateDropdown] = useState(false)
   const createDropdownRef = useRef<HTMLDivElement>(null)
   const saveTimeoutRef = useRef<number | null>(null)
   const pendingNoteRef = useRef<Note | null>(null)
   const editorRef = useRef<TipTapEditorHandle>(null)
 
-  // Auto-save function
+  // Auto-save function - only saves to DB, parent already notified by handleNoteUpdate
   const autoSave = useCallback(async (note: Note) => {
     if (!note) return
     
@@ -130,16 +131,12 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
       pendingNoteRef.current = null
       setSaveStatus('saved')
       setLastSavedAt(Date.now())
-      
-      // Notify parent
-      if (onNoteChange) {
-        onNoteChange(note)
-      }
+      // Parent already notified by handleNoteUpdate, no need to notify again
     } catch (error) {
       console.error('Auto-save failed:', error)
       setSaveStatus('error')
     }
-  }, [onNoteChange])
+  }, [])
 
   // Debounced save on note change
   useEffect(() => {
@@ -159,6 +156,11 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
     pendingNoteRef.current = updatedNote
     setSaveStatus('unsaved')
     
+    // Notify parent immediately for UI responsiveness
+    if (onNoteChange) {
+      onNoteChange(updatedNote)
+    }
+    
     // Clear existing timeout
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current)
@@ -168,7 +170,7 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
     saveTimeoutRef.current = window.setTimeout(() => {
       autoSave(updatedNote)
     }, 1000)
-  }, [autoSave])
+  }, [autoSave, onNoteChange])
 
   // Save on unmount or note change
   useEffect(() => {
@@ -199,6 +201,18 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
       window.removeEventListener('online', handleOnline)
       window.removeEventListener('offline', handleOffline)
     }
+  }, [])
+
+  // Keyboard shortcuts - Ctrl+F for find/replace
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault()
+        setShowFindReplace(true)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
   // Get save status display
@@ -239,8 +253,10 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
 
   const saveStatusDisplay = getSaveStatusDisplay()
 
+  const bothPanelsCollapsed = leftNavCollapsed && noteListCollapsed
+
   return (
-    <main className="kb-center">
+    <main className={`kb-center ${bothPanelsCollapsed ? 'kb-center--expanded' : ''}`}>
       {/* Header */}
       <header className="kb-center__header">
         <div className="kb-center__title">
@@ -277,6 +293,18 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
               <button className="kb-inline-toolbar__btn" title="高亮" onClick={() => editorRef.current?.toggleHighlight()}>
                 <Highlighter size={15} />
               </button>
+              {/* Text Color Picker - 预设颜色 */}
+              <ColorPicker
+                type="text"
+                onColorSelect={(color) => editorRef.current?.setTextColor(color)}
+                onClear={() => editorRef.current?.unsetTextColor()}
+              />
+              {/* Highlight Color Picker - 预设颜色 */}
+              <ColorPicker
+                type="highlight"
+                onColorSelect={(color) => editorRef.current?.toggleHighlightWithColor(color)}
+                onClear={() => editorRef.current?.toggleHighlight()}
+              />
               <button className="kb-inline-toolbar__btn" title="行内代码" onClick={() => editorRef.current?.toggleCode()}>
                 <Code size={15} />
               </button>
@@ -316,6 +344,10 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
               <button className="kb-inline-toolbar__btn" title="分隔线" onClick={() => editorRef.current?.setHorizontalRule()}>
                 <Minus size={15} />
               </button>
+              <div className="kb-inline-toolbar__divider" />
+              <button className="kb-inline-toolbar__btn" title="查找替换 (Ctrl+F)" onClick={() => setShowFindReplace(true)}>
+                <Search size={15} />
+              </button>
             </div>
           )}
 
@@ -347,7 +379,7 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
             </div>
           )}
           
-          {/* View Toggle */}
+          {/* View Toggle - Edit/Preview only */}
           <div className="kb-view-toggle">
             <button
               className={`kb-view-toggle__btn ${viewMode === 'edit' ? 'active' : ''}`}
@@ -355,13 +387,6 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
               title="编辑模式"
             >
               <Edit3 size={16} />
-            </button>
-            <button
-              className={`kb-view-toggle__btn ${viewMode === 'split' ? 'active' : ''}`}
-              onClick={() => onViewModeChange('split')}
-              title="分栏模式"
-            >
-              <Columns size={16} />
             </button>
             <button
               className={`kb-view-toggle__btn ${viewMode === 'preview' ? 'active' : ''}`}
@@ -434,9 +459,7 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
                           {note.pinned && <Pin size={12} className="kb-note-item__pin" />}
                           {note.title}
                         </span>
-                        {note.status === 'inbox' && (
-                          <span className="kb-note-item__badge kb-note-item__badge--inbox">待整理</span>
-                        )}
+
                       </div>
                       <div className="kb-note-item__meta">
                         {isTrashView ? (
@@ -577,15 +600,21 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
                   {/* Must Read Toggle */}
                   <button
                     className={`kb-editor__must-read ${selectedNote.mustRead ? 'kb-editor__must-read--active' : ''}`}
-                    onClick={() => handleNoteUpdate({
-                      ...selectedNote,
-                      mustRead: !selectedNote.mustRead,
-                      mustReadDate: !selectedNote.mustRead ? Date.now() : undefined
-                    })}
-                    title={selectedNote.mustRead ? '取消今日必读' : '标记为今日必读'}
+                    onClick={() => {
+                      // Use pending ref if available (for rapid clicks), otherwise use prop
+                      const currentNote = pendingNoteRef.current?.id === selectedNote.id 
+                        ? pendingNoteRef.current 
+                        : selectedNote
+                      handleNoteUpdate({
+                        ...currentNote,
+                        mustRead: !currentNote?.mustRead,
+                        mustReadDate: !currentNote?.mustRead ? Date.now() : undefined
+                      })
+                    }}
+                    title={selectedNote.mustRead ? '从今日必看中移除' : '加入今日必看'}
                   >
                     <span className="kb-editor__must-read-icon">📌</span>
-                    <span>{selectedNote.mustRead ? '今日必读' : '标记必读'}</span>
+                    <span>今日必看</span>
                   </button>
                   
                   {/* Custom Review Days */}
@@ -684,94 +713,19 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
                 </div>
               </div>
 
-              {/* Editor */}
-              {viewMode === 'split' ? (
-                // Split view - two notes side by side
-                <div className="kb-editor__dual">
-                  {/* Left Panel - Primary Note */}
-                  <div className="kb-editor__dual-panel kb-editor__dual-panel--left">
-                    <div className="kb-editor__dual-header">
-                      <span className="kb-editor__dual-label">主笔记</span>
-                      <span className="kb-editor__dual-title">{selectedNote.title || '无标题'}</span>
-                    </div>
-                    <div className="kb-editor__dual-content">
-                      <TipTapEditor
-                        ref={editorRef}
-                        note={selectedNote}
-                        notes={notes}
-                        onChange={handleNoteUpdate}
-                        onSave={() => {}}
-                        viewMode="edit"
-                        editorMode={editorMode}
-                        onEditorModeChange={setEditorMode}
-                      />
-                    </div>
-                  </div>
-                  
-                  {/* Divider */}
-                  <div className="kb-editor__dual-divider" />
-                  
-                  {/* Right Panel - Secondary Note or Note Selector */}
-                  <div className="kb-editor__dual-panel kb-editor__dual-panel--right">
-                    {splitNote ? (
-                      <>
-                        <div className="kb-editor__dual-header">
-                          <span className="kb-editor__dual-label">对比笔记</span>
-                          <span className="kb-editor__dual-title">{splitNote.title || '无标题'}</span>
-                          <button 
-                            className="kb-editor__dual-close"
-                            onClick={() => setSplitNoteId(null)}
-                            title="关闭对比"
-                          >
-                            <X size={14} />
-                          </button>
-                        </div>
-                        <div className="kb-editor__dual-content">
-                          <TipTapEditor
-                            note={splitNote}
-                            notes={notes}
-                            onChange={(updatedNote) => onNoteChange?.(updatedNote)}
-                            onSave={() => {}}
-                            viewMode="edit"
-                            editorMode={editorMode}
-                            onEditorModeChange={setEditorMode}
-                          />
-                        </div>
-                      </>
-                    ) : (
-                      <div className="kb-editor__dual-empty">
-                        <p>选择另一篇笔记进行对比</p>
-                        <div className="kb-editor__dual-selector">
-                          {notes.filter(n => n.id !== selectedNote.id && !n.deletedAt).slice(0, 5).map(note => (
-                            <button
-                              key={note.id}
-                              className="kb-editor__dual-option"
-                              onClick={() => setSplitNoteId(note.id)}
-                            >
-                              <span className="kb-editor__dual-option-title">{note.title || '无标题'}</span>
-                              <span className="kb-editor__dual-option-type">{note.type}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                // Normal single view
-                <div className="kb-editor__content">
-                  <TipTapEditor
-                    ref={editorRef}
-                    note={selectedNote}
-                    notes={notes}
-                    onChange={handleNoteUpdate}
-                    onSave={() => {}}
-                    viewMode={viewMode}
-                    editorMode={editorMode}
-                    onEditorModeChange={setEditorMode}
-                  />
-                </div>
-              )}
+              {/* Editor - Edit/Preview modes only */}
+              <div className="kb-editor__content">
+                <TipTapEditor
+                  ref={editorRef}
+                  note={selectedNote}
+                  notes={notes}
+                  onChange={handleNoteUpdate}
+                  onSave={() => {}}
+                  viewMode={viewMode}
+                  editorMode={editorMode}
+                  onEditorModeChange={setEditorMode}
+                />
+              </div>
             </>
           ) : (
             <div className="kb-editor__empty">
@@ -801,6 +755,40 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
           }}
         />
       )}
+
+      {/* Find Replace Modal */}
+      <FindReplaceModal
+        isOpen={showFindReplace}
+        onClose={() => setShowFindReplace(false)}
+        editorContent={selectedNote?.content || ''}
+        attachments={selectedNote?.attachments?.map(id => ({ id, name: id, type: 'other' })) || []}
+        onFind={(query) => {
+          // 查找功能 - 可以在这里实现高亮匹配文本
+          console.log('查找:', query)
+        }}
+        onReplace={(query, replacement) => {
+          // 替换功能
+          if (selectedNote && editorRef.current) {
+            const newContent = selectedNote.content.replace(new RegExp(query, 'g'), replacement)
+            handleNoteUpdate({
+              ...selectedNote,
+              content: newContent,
+              updatedAt: Date.now(),
+            })
+          }
+        }}
+        onReplaceAll={(query, replacement) => {
+          // 全部替换功能
+          if (selectedNote && editorRef.current) {
+            const newContent = selectedNote.content.replace(new RegExp(query, 'gi'), replacement)
+            handleNoteUpdate({
+              ...selectedNote,
+              content: newContent,
+              updatedAt: Date.now(),
+            })
+          }
+        }}
+      />
     </main>
   )
 }
