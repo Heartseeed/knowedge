@@ -386,7 +386,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               const newNoteId = 'n' + Date.now()
               const newNote: Note = {
                 id: newNoteId,
-                title: '',
+                title: '新想法',
                 content: '',
                 type: 'idea',
                 status: 'inbox',
@@ -448,7 +448,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               const newNoteId = 'n' + Date.now()
               const newNote: Note = {
                 id: newNoteId,
-                title: '',
+                title: '新笔记',
                 content: '',
                 type: 'note',
                 status: 'inbox',
