@@ -227,7 +227,10 @@ const Dashboard: React.FC<DashboardProps> = ({
     onCapture?.(content)
   }
 
-  const recentNotes = useMemo(() => [...allNotes].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 5), [allNotes])
+  const recentNotes = useMemo(() => [...allNotes]
+    .filter(n => !n.deletedAt)
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .slice(0, 5), [allNotes])
   const tagCounts = useMemo(() => {
     const counts: Record<string, number> = {}
     allNotes.forEach(n => n.tags?.forEach(t => { counts[t] = (counts[t] || 0) + 1 }))
