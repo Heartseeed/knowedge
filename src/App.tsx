@@ -188,9 +188,22 @@ const App: React.FC = () => {
     if (noteId) setSelectedNoteId(noteId)
   }, [currentView])
 
-  const handleNoteSelect = useCallback((noteId: string) => {
+  const handleNoteSelect = useCallback((noteId: string, note?: Note) => {
     setSelectedNoteId(noteId)
     setCurrentView('knowledge-base')
+    // If a new note is provided, add it to the notes list
+    if (note) {
+      setNotes(prev => {
+        // Check if note already exists
+        const exists = prev.find(n => n.id === note.id)
+        if (exists) {
+          // Update existing note
+          return prev.map(n => n.id === note.id ? note : n)
+        }
+        // Add new note to the beginning
+        return [note, ...prev]
+      })
+    }
   }, [])
 
   // Handle review completion - update note with review data
@@ -383,11 +396,12 @@ const App: React.FC = () => {
             onBack={() => setCurrentView(previousView || 'dashboard')}
             onNoteClick={handleNoteSelect}
           />
-        ) : (
+        ) : currentView === 'knowledge-base' || currentView === 'note' || currentView === 'inbox' ? (
           <KBMain
             onBackToDashboard={() => setCurrentView('dashboard')}
             onNavigate={navigate}
-            selectedNoteId={selectedNoteId}
+            selectedNoteId={selectedNoteId?.startsWith('tag:') ? undefined : selectedNoteId}
+            initialTag={selectedNoteId?.startsWith('tag:') ? selectedNoteId.slice(4) : undefined}
             notes={notes}
             onNotesChange={setNotes}
             onCapture={() => {}}
@@ -395,6 +409,18 @@ const App: React.FC = () => {
             onAuthClick={() => setShowAuth(true)}
             currentUser={currentUser}
             syncStatus={syncStatus}
+          />
+        ) : (
+          <Dashboard
+            onNavigate={navigate}
+            notes={notes}
+            onNoteSelect={handleNoteSelect}
+            onCapture={() => {}}
+            onShowSearch={() => setShowSearch(true)}
+            onOpenSettings={() => setShowSettings(true)}
+            syncStatus={syncStatus}
+            onAuthClick={() => setShowAuth(true)}
+            currentUser={currentUser}
           />
         )}
       </KnowledgeBaseProvider>

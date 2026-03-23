@@ -18,7 +18,7 @@ type SearchDim = 'all' | 'title' | 'content' | 'tag' | 'folder' | 'category'
 interface DashboardProps {
   onNavigate?: (view: string, noteId?: string) => void
   notes?: Note[]
-  onNoteSelect?: (noteId: string) => void
+  onNoteSelect?: (noteId: string, note?: Note) => void
   onCapture?: (content: string) => void
   onShowSearch?: () => void
   onOpenSettings?: () => void
@@ -199,14 +199,16 @@ const Dashboard: React.FC<DashboardProps> = ({
   }
 
   const handleTopicSearch = (tag: string) => {
-    setSearchDim('tag'); setSearchQuery(`#${tag}`); setShowResults(true)
+    // 导航到知识库并传递标签参数
+    onNavigate?.('knowledge-base', `tag:${tag}`)
   }
 
   const handleCapture = async (content: string) => {
     try {
       const now = Date.now()
+      const newNoteId = generateId('n')
       const newNote: Note = {
-        id: generateId('n'),
+        id: newNoteId,
         title: content.slice(0, 50).replace(/<[^>]+>/g, '') || '新笔记',
         content: `<p>${content}</p>`,
         type: 'idea', status: 'inbox',
@@ -217,8 +219,12 @@ const Dashboard: React.FC<DashboardProps> = ({
       await addNote(newNote)
       const all = await initDB.getAllNotes()
       setAllNotes(all || [])
+      // Navigate to knowledge base with the new note
+      onNoteSelect?.(newNoteId)
+      onNavigate?.('knowledge-base')
     } catch { /* silently fail */ }
-    setCaptureOpen(false); onCapture?.(content)
+    setCaptureOpen(false)
+    onCapture?.(content)
   }
 
   const recentNotes = useMemo(() => [...allNotes].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 5), [allNotes])
@@ -372,7 +378,37 @@ const Dashboard: React.FC<DashboardProps> = ({
             draftCount={Math.max(0, allNotes.filter(n => n.status !== 'connected').length)}
             onReviewClick={() => onNavigate?.('review')}
             onDraftClick={() => onNavigate?.('inbox')}
-            onNewNote={() => setCaptureOpen(true)}
+            onNewNote={async () => {
+              // Create a new note and navigate to knowledge base
+              const newNoteId = 'n' + Date.now()
+              const newNote: Note = {
+                id: newNoteId,
+                title: '',
+                content: '',
+                type: 'idea',
+                status: 'inbox',
+                folderId: undefined,
+                tags: [],
+                links: [],
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+                reviewCount: 0,
+                nextReviewAt: Date.now(),
+                easeFactor: 2.5,
+                interval: 1,
+              }
+              try {
+                // Add to notes
+                await addNote(newNote)
+                // Update local state
+                setAllNotes(prev => [newNote, ...prev])
+                // Navigate and select (pass note to parent)
+                onNoteSelect?.(newNoteId, newNote)
+                onNavigate?.('knowledge-base')
+              } catch (error) {
+                console.error('Failed to create note:', error)
+              }
+            }}
           />
 
           {/* ========== SECTION 3: Three Widgets ========== */}
@@ -404,7 +440,37 @@ const Dashboard: React.FC<DashboardProps> = ({
 
           {/* ========== SECTION 5: Quick Access ========== */}
           <QuickAccess
-            onNewNote={() => setCaptureOpen(true)}
+            onNewNote={async () => {
+              // Create a new note and navigate to knowledge base
+              const newNoteId = 'n' + Date.now()
+              const newNote: Note = {
+                id: newNoteId,
+                title: '',
+                content: '',
+                type: 'note',
+                status: 'inbox',
+                folderId: undefined,
+                tags: [],
+                links: [],
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+                reviewCount: 0,
+                nextReviewAt: Date.now(),
+                easeFactor: 2.5,
+                interval: 1,
+              }
+              try {
+                // Add to notes
+                await addNote(newNote)
+                // Update local state
+                setAllNotes(prev => [newNote, ...prev])
+                // Navigate and select (pass note to parent)
+                onNoteSelect?.(newNoteId, newNote)
+                onNavigate?.('knowledge-base')
+              } catch (error) {
+                console.error('Failed to create note:', error)
+              }
+            }}
             onInbox={() => onNavigate?.('inbox')}
             onGraph={() => onNavigate?.('graph')}
             onTimeline={() => onNavigate?.('timeline')}
@@ -415,7 +481,11 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </main>
 
-      <FloatingCapture onCapture={handleCapture} />
+      <FloatingCapture 
+        onCapture={handleCapture} 
+        isOpen={captureOpen}
+        onOpenChange={setCaptureOpen}
+      />
     </div>
   )
 }
