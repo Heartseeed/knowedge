@@ -193,6 +193,38 @@ const App: React.FC = () => {
     setCurrentView('knowledge-base')
   }, [])
 
+  // Handle review completion - update note with review data
+  const handleReviewComplete = useCallback(async (noteId: string, reviewData: {
+    reviewCount: number
+    nextReviewAt: number
+    easeFactor: number
+    interval: number
+  }) => {
+    // Update note in state
+    setNotes(prev => prev.map(n => {
+      if (n.id === noteId) {
+        return {
+          ...n,
+          ...reviewData,
+          updatedAt: Date.now(),
+        }
+      }
+      return n
+    }))
+    
+    // Save to IndexedDB
+    const note = notes.find(n => n.id === noteId)
+    if (note) {
+      const updatedNote = { ...note, ...reviewData, updatedAt: Date.now() }
+      await initDB.putNote(updatedNote)
+    }
+    
+    // Trigger sync if user is logged in
+    if (currentUser) {
+      supabaseSyncManager.markPending()
+    }
+  }, [notes, currentUser])
+
   const handleCreateNote = useCallback(async (title: string) => {
     const now = Date.now()
     const newNote: Note = {
@@ -337,7 +369,7 @@ const App: React.FC = () => {
             notes={notes}
             onBack={() => setCurrentView('dashboard')}
             onNoteClick={handleNoteSelect}
-            onReviewComplete={() => {}}
+            onReviewComplete={handleReviewComplete}
           />
         ) : currentView === 'graph' ? (
           <GraphPage

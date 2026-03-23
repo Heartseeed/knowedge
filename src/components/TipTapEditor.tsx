@@ -202,6 +202,16 @@ const TipTapEditor = forwardRef<TipTapEditorHandle, TipTapEditorProps>(({
     },
   })
 
+  // Update editor content when note changes
+  useEffect(() => {
+    if (editor && note) {
+      const currentContent = editor.getHTML()
+      if (currentContent !== note.content && note.content !== undefined) {
+        editor.commands.setContent(note.content || '')
+      }
+    }
+  }, [editor, note?.id, note?.content])
+
   // Check for [[ trigger
   const checkForWikiLinkTrigger = useCallback((editorInstance: Editor) => {
     const { state } = editorInstance
@@ -583,31 +593,69 @@ const TipTapEditor = forwardRef<TipTapEditorHandle, TipTapEditorProps>(({
         </div>
       )}
 
-      {/* Rich Text Mode */}
-      {editorMode === 'rich' && (
-        <div className="ke-editor__content">
-          <EditorContent editor={editor} />
+      {/* View Mode: Edit / Split / Preview */}
+      {viewMode === 'preview' ? (
+        // Preview Mode - Show rendered HTML only
+        <div className="ke-editor__preview">
+          <div 
+            className="ke-editor__preview-content"
+            dangerouslySetInnerHTML={{ __html: editor?.getHTML() || note.content }}
+          />
           <div className="ke-editor__markdown-stats">
             {markdownContent.replace(/<[^>]+>/g, '').length} 字符 · {markdownContent.replace(/<[^>]+>/g, '').split(/\s+/).filter(Boolean).length} 词
           </div>
         </div>
-      )}
-
-      {/* Markdown Mode */}
-      {editorMode === 'markdown' && (
-        <div className="ke-editor__markdown">
-          <textarea
-            ref={textareaRef}
-            className="ke-editor__markdown-textarea"
-            value={markdownContent}
-            onChange={(e) => handleMarkdownChange(e.target.value)}
-            placeholder="# 开始使用 Markdown&#10;&#10;支持以下语法：&#10;&#10;## 标题&#10;**加粗** *斜体* ~~删除线~~&#10;&#10;- 列表项&#10;1. 有序列表&#10;&#10;[链接文字](url)&#10;&#10;```代码块```&#10;&#10;> 引用&#10;&#10;[[双向链接]]"
-            spellCheck={false}
-          />
-          <div className="ke-editor__markdown-stats">
-            {markdownContent.length} 字符 · {markdownContent.split(/\s+/).filter(Boolean).length} 词
+      ) : viewMode === 'split' ? (
+        // Split Mode - Show both editor and preview side by side
+        <div className="ke-editor__split">
+          <div className="ke-editor__split-left">
+            {editorMode === 'rich' ? (
+              <EditorContent editor={editor} />
+            ) : (
+              <textarea
+                ref={textareaRef}
+                className="ke-editor__markdown-textarea"
+                value={markdownContent}
+                onChange={(e) => handleMarkdownChange(e.target.value)}
+                placeholder="# 开始使用 Markdown&#10;&#10;支持以下语法：&#10;&#10;## 标题&#10;**加粗** *斜体* ~~删除线~~&#10;&#10;- 列表项&#10;1. 有序列表&#10;&#10;[链接文字](url)&#10;&#10;```代码块```&#10;&#10;> 引用&#10;&#10;[[双向链接]]"
+                spellCheck={false}
+              />
+            )}
+          </div>
+          <div className="ke-editor__split-divider" />
+          <div className="ke-editor__split-right">
+            <div 
+              className="ke-editor__preview-content"
+              dangerouslySetInnerHTML={{ __html: editor?.getHTML() || note.content }}
+            />
           </div>
         </div>
+      ) : (
+        // Edit Mode - Original behavior
+        <>
+          {editorMode === 'rich' ? (
+            <div className="ke-editor__content">
+              <EditorContent editor={editor} />
+              <div className="ke-editor__markdown-stats">
+                {markdownContent.replace(/<[^>]+>/g, '').length} 字符 · {markdownContent.replace(/<[^>]+>/g, '').split(/\s+/).filter(Boolean).length} 词
+              </div>
+            </div>
+          ) : (
+            <div className="ke-editor__markdown">
+              <textarea
+                ref={textareaRef}
+                className="ke-editor__markdown-textarea"
+                value={markdownContent}
+                onChange={(e) => handleMarkdownChange(e.target.value)}
+                placeholder="# 开始使用 Markdown&#10;&#10;支持以下语法：&#10;&#10;## 标题&#10;**加粗** *斜体* ~~删除线~~&#10;&#10;- 列表项&#10;1. 有序列表&#10;&#10;[链接文字](url)&#10;&#10;```代码块```&#10;&#10;> 引用&#10;&#10;[[双向链接]]"
+                spellCheck={false}
+              />
+              <div className="ke-editor__markdown-stats">
+                {markdownContent.length} 字符 · {markdownContent.split(/\s+/).filter(Boolean).length} 词
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Wiki link autocomplete popup */}

@@ -21,7 +21,7 @@ interface KBMainProps {
   syncStatus?: 'local' | 'syncing' | 'synced'
 }
 
-const mockFolders: Folder[] = [
+const initialFolders: Folder[] = [
   { id: 'root', name: '📁 知识库', icon: '📁', parentId: undefined },
   { id: 'work', name: '💼 工作', icon: '💼', parentId: 'root' },
   { id: 'study', name: '📚 学习', icon: '📚', parentId: 'root' },
@@ -338,6 +338,8 @@ const KBMain: React.FC<KBMainProps> = ({
   // Collapsible left navigation state
   const [leftNavCollapsed, setLeftNavCollapsed] = useState(false)
   const [noteListCollapsed, setNoteListCollapsed] = useState(false)
+  // Folders state
+  const [folders, setFolders] = useState<Folder[]>(initialFolders)
 
   // 同步外部 notes
   useEffect(() => {
@@ -417,6 +419,36 @@ const KBMain: React.FC<KBMainProps> = ({
 
   const handleNoteSelect = (note: Note) => {
     setSelectedNote(note)
+  }
+
+  // Create new note
+  const handleCreateNote = (type: Note['type'] = 'concept') => {
+    const now = Date.now()
+    const newNote: Note = {
+      id: 'n' + now,
+      title: '',
+      content: '',
+      type: type,
+      status: 'inbox',
+      folderId: selectedFolderId === 'root' ? undefined : selectedFolderId,
+      tags: [],
+      links: [],
+      createdAt: now,
+      updatedAt: now,
+      reviewCount: 0,
+      nextReviewAt: now,
+      easeFactor: 2.5,
+      interval: 1,
+    }
+    
+    // Add to notes and select it
+    const updated = [newNote, ...notes]
+    setNotes(updated)
+    onNotesChange?.(updated)
+    setSelectedNote(newNote)
+    
+    // Save to IndexedDB
+    initDB.putNote(newNote).catch(console.error)
   }
 
   // Pin/Unpin note
@@ -515,39 +547,6 @@ const KBMain: React.FC<KBMainProps> = ({
     setCaptureOpen(false)
   }
 
-  // Create new note
-  const handleCreateNote = async () => {
-    const now = Date.now()
-    const newNote: Note = {
-      id: generateId('n'),
-      title: '新笔记',
-      content: '',
-      type: 'idea',
-      status: 'inbox',
-      folderId: undefined,
-      tags: [],
-      links: [],
-      reviewCount: 0,
-      nextReviewAt: now + 86400000, // Review tomorrow
-      easeFactor: 2.5,
-      interval: 1,
-      createdAt: now,
-      updatedAt: now,
-      isSynced: false,
-    }
-    
-    // Save to IndexedDB
-    await initDB.putNote(newNote)
-    
-    // Update state
-    const updated = [newNote, ...notes]
-    setNotes(updated)
-    onNotesChange?.(updated)
-    
-    // Select the new note
-    setSelectedNote(newNote)
-  }
-
   const displayedNotes = getFilteredNotes()
 
   return (
@@ -565,7 +564,7 @@ const KBMain: React.FC<KBMainProps> = ({
 
       <div className="kb-body">
         <LeftNav
-          folders={mockFolders}
+          folders={folders}
           tags={mockTags}
           inboxCount={inboxNotes.length}
           trashCount={trashCount}
@@ -580,7 +579,7 @@ const KBMain: React.FC<KBMainProps> = ({
           }}
           onFolderCreate={(name) => {
             const newFolder = { id: 'f' + Date.now(), name, icon: '📁' }
-            setMockFolders(prev => [...prev, newFolder])
+            setFolders(prev => [...prev, newFolder])
           }}
           onTagClick={handleTagClick}
           onGraphClick={() => onNavigate?.('graph')}
@@ -595,6 +594,10 @@ const KBMain: React.FC<KBMainProps> = ({
           onViewModeChange={setViewMode}
           onNoteChange={(updatedNote) => {
             setNotes(prev => prev.map(n => n.id === updatedNote.id ? updatedNote : n))
+            // Also update selectedNote if it's the one being edited
+            if (selectedNote?.id === updatedNote.id) {
+              setSelectedNote(updatedNote)
+            }
           }}
           onNoteTypeChange={handleNoteTypeChange}
           onTogglePin={handleTogglePin}
@@ -602,6 +605,7 @@ const KBMain: React.FC<KBMainProps> = ({
           onDeleteNote={handleDeleteNote}
           onRestoreNote={handleRestoreNote}
           onPermanentDelete={handlePermanentDelete}
+          onCreateNote={handleCreateNote}
           noteListCollapsed={noteListCollapsed}
           onNoteListToggle={() => setNoteListCollapsed(v => !v)}
           leftNavCollapsed={leftNavCollapsed}

@@ -31,7 +31,7 @@ interface CenterPanelProps {
   onDeleteNote?: (note: Note) => void
   onRestoreNote?: (note: Note) => void
   onPermanentDelete?: (note: Note) => void
-  onCreateNote?: () => void
+  onCreateNote?: (type?: NoteType) => void
   noteListCollapsed?: boolean
   onNoteListToggle?: () => void
   leftNavCollapsed?: boolean
@@ -110,6 +110,8 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null)
   const [showTypeDropdown, setShowTypeDropdown] = useState(false)
   const [showVersionHistory, setShowVersionHistory] = useState(false)
+  const [showCreateDropdown, setShowCreateDropdown] = useState(false)
+  const createDropdownRef = useRef<HTMLDivElement>(null)
   const saveTimeoutRef = useRef<number | null>(null)
   const pendingNoteRef = useRef<Note | null>(null)
   const editorRef = useRef<TipTapEditorHandle>(null)
@@ -365,13 +367,36 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
               <Eye size={16} />
             </button>
           </div>
-          <button 
-            className="ke-btn ke-btn--primary ke-btn--sm" 
-            onClick={() => onCreateNote?.()}
-          >
-            <Plus size={16} />
-            <span>新建</span>
-          </button>
+          <div className="kb-create-dropdown-wrapper">
+            <button 
+              className="ke-btn ke-btn--primary ke-btn--sm" 
+              onClick={() => setShowCreateDropdown(!showCreateDropdown)}
+            >
+              <Plus size={16} />
+              <span>新建</span>
+              <ChevronDown size={14} />
+            </button>
+            {showCreateDropdown && (
+              <div className="kb-create-dropdown">
+                <div className="kb-create-dropdown__title">选择笔记类型</div>
+                {Object.entries(NOTE_TYPE_CONFIG).map(([type, config]) => (
+                  <button
+                    key={type}
+                    className="kb-create-dropdown__item"
+                    onClick={() => {
+                      onCreateNote?.(type as NoteType)
+                      setShowCreateDropdown(false)
+                    }}
+                  >
+                    <span className="kb-create-dropdown__icon" style={{ color: config.color }}>
+                      {config.icon}
+                    </span>
+                    <span className="kb-create-dropdown__label">{config.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </header>
 

@@ -30,11 +30,11 @@ const IdeaIcon = () => (
 )
 
 const TodayActions: React.FC<TodayActionsProps> = ({
-  reviewCount = 2,
-  draftCount = 1,
-  onReviewClick,
-  onDraftClick,
-  onNewNote,
+  reviewCount = 0,
+  draftCount = 0,
+  onReviewClick = () => {},
+  onDraftClick = () => {},
+  onNewNote = () => {},
 }) => {
   return (
     <div className="ke-today-actions">

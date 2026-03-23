@@ -118,37 +118,52 @@ class IndexedDBWrapper {
     return [
       {
         id: 'sample-welcome',
-        title: '👋 欢迎使用 KnowEdge',
-        content: `<h2>欢迎使用 KnowEdge - 你的第二大脑</h2>
-<p>KnowEdge 是一款专注于<strong>知识管理</strong>和<strong>间隔复习</strong>的个人知识库。</p>
+        title: '👋 欢迎使用 KnowEdge 知域',
+        content: `<h2>欢迎使用 KnowEdge 知域 - 你的个人知识库</h2>
+<p>知域（KnowEdge）是一款专注于<strong>知识管理</strong>和<strong>间隔复习</strong>的个人知识库应用，帮助你构建属于自己的第二大脑。</p>
+
 <h3>🎯 核心功能</h3>
 <ul>
-<li>📝 <strong>双模式编辑</strong>：支持富文本和 Markdown 两种编辑模式</li>
-<li>📁 <strong>文件夹分类</strong>：使用文件夹整理你的知识</li>
-<li>🏷️ <strong>标签系统</strong>：为笔记添加标签，方便检索</li>
-<li>📌 <strong>笔记置顶</strong>：重要笔记可以置顶显示</li>
+<li>📝 <strong>双模式编辑</strong>：支持富文本和 Markdown 两种编辑模式，随时切换</li>
+<li>📁 <strong>文件夹分类</strong>：使用文件夹整理你的知识，支持自定义文件夹</li>
+<li>⭐ <strong>星标笔记</strong>：重要笔记可以添加星标，快速访问</li>
+<li>🏷️ <strong>标签系统</strong>：为笔记添加标签，方便检索和关联</li>
+<li>📌 <strong>笔记置顶</strong>：重要笔记可以置顶显示，始终在前</li>
 <li>🔄 <strong>间隔复习</strong>：基于遗忘曲线的智能复习提醒</li>
-<li>🔗 <strong>双向链接</strong>：输入 [[ 快速建立笔记关联</li>
+<li>🔗 <strong>双向链接</strong>：输入 [[ 快速建立笔记关联，构建知识网络</li>
 <li>📎 <strong>文件嵌入</strong>：支持图片、PDF、Word、Excel、音视频直接嵌入笔记</li>
-<li>☁️ <strong>云端同步</strong>：笔记和文件自动同步到云端</li>
-<li>🗑️ <strong>回收站</strong>：删除的笔记30天内可恢复</li>
+<li>☁️ <strong>云端同步</strong>：登录后可自动同步笔记到云端，多设备访问</li>
+<li>🗑️ <strong>回收站</strong>：删除的笔记30天内可恢复，避免误删</li>
+<li>🔍 <strong>智能搜索</strong>：支持按标题、内容、标签、文件夹多维度搜索</li>
 </ul>
+
 <h3>🚀 快速开始</h3>
 <ol>
-<li>点击左上角 <strong>+ 新建</strong> 创建笔记</li>
-<li>使用工具栏<strong>加粗、斜体、列表</strong>等格式化文本</li>
-<li>点击笔记类型徽章<strong>切换笔记分类</strong></li>
-<li>按 <kbd>Ctrl+K</kbd> 快速搜索笔记</li>
+<li>点击左侧 <strong>+ 新建</strong> 按钮创建你的第一篇笔记</li>
+<li>选择笔记类型（概念、读书笔记、想法等），开始记录</li>
+<li>使用工具栏的<strong>加粗、斜体、列表</strong>等工具格式化文本</li>
+<li>点击笔记右上角的 <strong>⭐</strong> 添加星标，方便以后查找</li>
+<li>按 <kbd>Ctrl+K</kbd> 快速搜索你的所有笔记</li>
 </ol>
-<h3>⌨️ 快捷键</h3>
+
+<h3>⌨️ 常用快捷键</h3>
 <ul>
-<li><kbd>Ctrl+K</kbd> - 快速搜索</li>
-<li><kbd>Ctrl+B</kbd> - 加粗</li>
-<li><kbd>Ctrl+I</kbd> - 斜体</li>
-<li><kbd>Ctrl+U</kbd> - 下划线</li>
+<li><kbd>Ctrl+K</kbd> - 快速搜索笔记</li>
+<li><kbd>Ctrl+B</kbd> - 加粗选中文本</li>
+<li><kbd>Ctrl+I</kbd> - 斜体选中文本</li>
+<li><kbd>Ctrl+U</kbd> - 下划线选中文本</li>
+<li><kbd>[[</kbd> - 插入双向链接，连接相关笔记</li>
 </ul>
-<h3>💡 提示</h3>
-<p>笔记会自动保存，无需手动操作。删除的笔记会在回收站保留30天后自动清除。</p>`,
+
+<h3>💡 使用提示</h3>
+<ul>
+<li>笔记会自动保存到本地，无需手动操作</li>
+<li>点击右上角的用户图标可以登录账号，启用云端同步</li>
+<li>删除的笔记会进入回收站，30天内可以随时恢复</li>
+<li>定期整理笔记，为笔记添加标签和链接，构建知识网络</li>
+</ul>
+
+<p><strong>祝你使用愉快！开始构建你的知识库吧！</strong> 🎉</p>`,
         type: 'tutorial',
         status: 'organized',
         folderId: 'root',

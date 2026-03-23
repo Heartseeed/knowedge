@@ -91,7 +91,7 @@ export const BrandHero: React.FC<{ iconSize?: number; wordWidth?: number }> = ({
             letterSpacing: '1px',
           }}
         >
-          知域 · 知识管理
+          知域·你的个人知识库
         </span>
       </div>
     </div>

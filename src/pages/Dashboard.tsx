@@ -309,24 +309,57 @@ const Dashboard: React.FC<DashboardProps> = ({
               {showResults && (
                 <div className="ke-hero__search-results">
                   {searchResults.length > 0 ? (
-                    searchResults.slice(0, 8).map(note => (
-                      <div
-                        key={note.id}
-                        className="ke-hero__search-result"
-                        onClick={() => handleResultClick(note.id)}
-                      >
-                        <span className="ke-hero__result-icon">{NOTE_TYPE_ICONS[note.type] || '📝'}</span>
-                        <div className="ke-hero__result-info">
-                          <div className="ke-hero__result-title">{note.title}</div>
-                          <div className="ke-hero__result-meta">
-                            {formatRelativeTime(note.updatedAt)}
-                            {note.tags?.slice(0, 2).map(t => ` #${t}`)}
+                    searchResults.slice(0, 8).map(note => {
+                      // Highlight matching text
+                      const query = searchQuery.toLowerCase().trim()
+                      const highlightMatch = (text: string) => {
+                        if (!query || !text) return text
+                        const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
+                        return text.replace(regex, '<mark class="ke-hero__search-highlight">$1</mark>')
+                      }
+                      
+                      // Get content excerpt with highlight
+                      const getExcerpt = () => {
+                        const contentText = (note.content || '').replace(/<[^>]+>/g, '')
+                        if (searchDim === 'content' && contentText.toLowerCase().includes(query)) {
+                          const index = contentText.toLowerCase().indexOf(query)
+                          const start = Math.max(0, index - 30)
+                          const end = Math.min(contentText.length, index + query.length + 30)
+                          const excerpt = contentText.slice(start, end)
+                          return (start > 0 ? '...' : '') + highlightMatch(excerpt) + (end < contentText.length ? '...' : '')
+                        }
+                        return contentText.slice(0, 60) + (contentText.length > 60 ? '...' : '')
+                      }
+                      
+                      return (
+                        <div
+                          key={note.id}
+                          className="ke-hero__search-result"
+                          onClick={() => handleResultClick(note.id)}
+                        >
+                          <span className="ke-hero__result-icon">{NOTE_TYPE_ICONS[note.type] || '📝'}</span>
+                          <div className="ke-hero__result-info">
+                            <div 
+                              className="ke-hero__result-title"
+                              dangerouslySetInnerHTML={{ __html: highlightMatch(note.title) || '无标题' }}
+                            />
+                            <div className="ke-hero__result-meta">
+                              <span dangerouslySetInnerHTML={{ __html: getExcerpt() }} />
+                              <span className="ke-hero__result-separator">·</span>
+                              <span>{formatRelativeTime(note.updatedAt)}</span>
+                              {note.tags?.slice(0, 2).map(t => (
+                                <span key={t} className="ke-hero__result-tag">#{t}</span>
+                              ))}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))
+                      )
+                    })
                   ) : (
-                    <div className="ke-hero__search-empty">未找到结果</div>
+                    <div className="ke-hero__search-empty">
+                      <div>未找到与 "{searchQuery}" 相关的结果</div>
+                      <div className="ke-hero__search-empty-hint">试试其他关键词或创建新笔记</div>
+                    </div>
                   )}
                 </div>
               )}

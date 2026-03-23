@@ -37,13 +37,13 @@ const ChevronRightIcon = () => (
 )
 
 const SmartReview: React.FC<SmartReviewProps> = ({
-  todayCount,
-  overdueCount,
-  newUnreviewedCount,
-  todayList,
-  overdueList,
-  onStartReview,
-  onItemClick,
+  todayCount = 0,
+  overdueCount = 0,
+  newUnreviewedCount = 0,
+  todayList = [],
+  overdueList = [],
+  onStartReview = () => {},
+  onItemClick = () => {},
 }) => {
   const totalToReview = todayCount + overdueCount + newUnreviewedCount
 
