@@ -3,6 +3,7 @@ export type Folder = {
   name: string
   icon?: string
   parentId?: string
+  createdAt?: number
 }
 
 export type Tag = {

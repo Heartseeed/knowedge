@@ -302,6 +302,56 @@
   color: var(--ke-primary);
 }
 
+/* Scrollable Tag Cloud */
+.kb-tag-cloud--scrollable {
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.kb-tag-cloud--scrollable::-webkit-scrollbar {
+  width: 4px;
+}
+
+.kb-tag-cloud--scrollable::-webkit-scrollbar-track {
+  background: var(--ke-bg-subtle);
+  border-radius: var(--ke-radius-full);
+}
+
+.kb-tag-cloud--scrollable::-webkit-scrollbar-thumb {
+  background: var(--ke-border);
+  border-radius: var(--ke-radius-full);
+}
+
+.kb-tag-cloud--scrollable::-webkit-scrollbar-thumb:hover {
+  background: var(--ke-text-muted);
+}
+
+/* Tag with Count */
+.kb-tag--with-count {
+  padding: 4px 8px;
+  gap: 6px;
+}
+
+.kb-tag__name {
+  font-size: 0.8rem;
+}
+
+.kb-tag__count {
+  font-size: 0.7rem;
+  padding: 1px 5px;
+  background: var(--ke-bg-elevated);
+  border-radius: var(--ke-radius-full);
+  color: var(--ke-text-muted);
+  min-width: 18px;
+  text-align: center;
+}
+
+.kb-tag--clickable:hover .kb-tag__count {
+  background: var(--ke-primary);
+  color: white;
+}
+
 /* ============================================
    Center Panel
    ============================================ */

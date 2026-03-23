@@ -5,6 +5,7 @@ import type { Folder as FolderType, LeftNavSection } from '../types'
 interface LeftNavProps {
   folders: FolderType[]
   tags: string[]
+  tagCounts?: Record<string, number>
   inboxCount: number
   trashCount?: number
   selectedNav: LeftNavSection | string
@@ -65,6 +66,7 @@ const FolderItem: React.FC<FolderItemProps> = ({ folder, active, onClick, collap
 export const LeftNav: React.FC<LeftNavProps> = ({
   folders,
   tags,
+  tagCounts = {},
   inboxCount,
   trashCount = 0,
   selectedNav,
@@ -78,7 +80,19 @@ export const LeftNav: React.FC<LeftNavProps> = ({
   collapsed,
   onToggleCollapse,
 }) => {
-  const mainFolders = folders.filter(f => !f.parentId || f.parentId === 'root')
+  // Sort folders by creation time (newest first)
+  const sortedFolders = [...folders].sort((a, b) => {
+    const aTime = a.createdAt || parseInt(a.id.replace(/\D/g, '')) || 0
+    const bTime = b.createdAt || parseInt(b.id.replace(/\D/g, '')) || 0
+    return bTime - aTime
+  })
+  
+  const mainFolders = sortedFolders.filter(f => !f.parentId || f.parentId === 'root')
+  
+  // Sort tags by frequency (descending)
+  const sortedTags = tags
+    .map(tag => ({ tag, count: tagCounts[tag] || 0 }))
+    .sort((a, b) => b.count - a.count)
   const [isCreatingFolder, setIsCreatingFolder] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
 
@@ -119,7 +133,30 @@ export const LeftNav: React.FC<LeftNavProps> = ({
           </div>
         </div>
 
-        {/* Folders */}
+        {/* Tags - Moved up with frequency sorting and scrollbar */}
+        <div className="kb-left-nav__section">
+          <div className="kb-left-nav__header">
+            <span className={`kb-left-nav__header-text ${collapsed ? 'kb-left-nav__header-text--hidden' : ''}`}>
+              <Tag size={14} />
+              <span>标签</span>
+            </span>
+          </div>
+          <div className="kb-tag-cloud kb-tag-cloud--scrollable">
+            {sortedTags.map(({ tag, count }) => (
+              <button
+                key={tag}
+                className="kb-tag kb-tag--clickable kb-tag--with-count"
+                onClick={() => onTagClick(tag)}
+                title={`${tag} (${count} 条笔记)`}
+              >
+                <span className="kb-tag__name">{tag}</span>
+                <span className="kb-tag__count">{count}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Folders - Below starred notes with creation time sorting */}
         <div className="kb-left-nav__section">
           <div className="kb-left-nav__header">
             <span className={`kb-left-nav__header-text ${collapsed ? 'kb-left-nav__header-text--hidden' : ''}`}>
@@ -165,27 +202,6 @@ export const LeftNav: React.FC<LeftNavProps> = ({
                 active={selectedNav === 'folders' && selectedFolderId === folder.id}
                 onClick={() => onFolderSelect(folder.id)}
               />
-            ))}
-          </div>
-        </div>
-
-        {/* Tags */}
-        <div className="kb-left-nav__section">
-          <div className="kb-left-nav__header">
-            <span className={`kb-left-nav__header-text ${collapsed ? 'kb-left-nav__header-text--hidden' : ''}`}>
-              <Tag size={14} />
-              <span>标签</span>
-            </span>
-          </div>
-          <div className="kb-tag-cloud">
-            {tags.map(tag => (
-              <button
-                key={tag}
-                className="kb-tag kb-tag--clickable"
-                onClick={() => onTagClick(tag)}
-              >
-                {tag}
-              </button>
             ))}
           </div>
         </div>

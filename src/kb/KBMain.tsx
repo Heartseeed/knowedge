@@ -565,7 +565,13 @@ const KBMain: React.FC<KBMainProps> = ({
       <div className="kb-body">
         <LeftNav
           folders={folders}
-          tags={mockTags}
+          tags={Array.from(new Set(notes.flatMap(n => n.tags)))}
+          tagCounts={notes.reduce((acc, note) => {
+            note.tags.forEach(tag => {
+              acc[tag] = (acc[tag] || 0) + 1
+            })
+            return acc
+          }, {} as Record<string, number>)}
           inboxCount={inboxNotes.length}
           trashCount={trashCount}
           selectedNav={selectedNav}
@@ -578,7 +584,7 @@ const KBMain: React.FC<KBMainProps> = ({
             setSelectedNav('folders')
           }}
           onFolderCreate={(name) => {
-            const newFolder = { id: 'f' + Date.now(), name, icon: '📁' }
+            const newFolder: Folder = { id: 'f' + Date.now(), name, icon: '📁', createdAt: Date.now() }
             setFolders(prev => [...prev, newFolder])
           }}
           onTagClick={handleTagClick}
