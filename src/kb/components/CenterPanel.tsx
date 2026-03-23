@@ -10,7 +10,7 @@ import {
   Undo, Redo, Bold, Italic, Underline as UnderlineIcon, Strikethrough,
   AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Quote,
   Code, CodeSquare, Link2Icon, Minus, Highlighter, Pin, Trash2, RotateCcw, Trash, ChevronDown,
-  Paperclip, Star, History
+  Paperclip, Star, History, X
 } from 'lucide-react'
 import type { Note, ViewMode, NoteType } from '../types'
 import { initDB } from '../../db/indexeddb'
@@ -578,13 +578,64 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
                     <Clock size={13} />
                     {formatRelativeTime(selectedNote.updatedAt)}
                   </span>
-                  {selectedNote.tags.length > 0 && (
+                  {/* Editable Tags */}
+                  <div className="kb-editor__tags-container">
                     <div className="kb-editor__tags">
                       {selectedNote.tags.map(tag => (
-                        <span key={tag} className="kb-tag">{tag}</span>
+                        <span key={tag} className="kb-tag kb-tag--editable">
+                          {tag}
+                          <button 
+                            className="kb-tag__remove"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const updatedTags = selectedNote.tags.filter(t => t !== tag)
+                              handleNoteUpdate({
+                                ...selectedNote,
+                                tags: updatedTags,
+                                updatedAt: Date.now()
+                              })
+                            }}
+                            title="删除标签"
+                          >
+                            <X size={10} />
+                          </button>
+                        </span>
                       ))}
                     </div>
-                  )}
+                    {/* Add Tag Input */}
+                    <div className="kb-editor__tag-input-wrapper">
+                      <input
+                        type="text"
+                        className="kb-editor__tag-input"
+                        placeholder="+ 添加标签"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const input = e.target as HTMLInputElement
+                            const newTag = input.value.trim()
+                            if (newTag && !selectedNote.tags.includes(newTag)) {
+                              handleNoteUpdate({
+                                ...selectedNote,
+                                tags: [...selectedNote.tags, newTag],
+                                updatedAt: Date.now()
+                              })
+                              input.value = ''
+                            }
+                          }
+                        }}
+                        onBlur={(e) => {
+                          const newTag = e.target.value.trim()
+                          if (newTag && !selectedNote.tags.includes(newTag)) {
+                            handleNoteUpdate({
+                              ...selectedNote,
+                              tags: [...selectedNote.tags, newTag],
+                              updatedAt: Date.now()
+                            })
+                            e.target.value = ''
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 

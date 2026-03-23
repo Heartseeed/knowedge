@@ -801,6 +801,78 @@
 .kb-editor__tags {
   display: flex;
   gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Editable Tags Container */
+.kb-editor__tags-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.kb-tag--editable {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--ke-primary-light);
+  color: var(--ke-primary);
+  border-radius: var(--ke-radius-full);
+  font-size: 0.8rem;
+  transition: all var(--ke-transition);
+}
+
+.kb-tag--editable:hover {
+  background: var(--ke-primary);
+  color: white;
+}
+
+.kb-tag__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity var(--ke-transition);
+}
+
+.kb-tag__remove:hover {
+  opacity: 1;
+}
+
+.kb-editor__tag-input-wrapper {
+  position: relative;
+}
+
+.kb-editor__tag-input {
+  width: 80px;
+  padding: 4px 8px;
+  border: 1px dashed var(--ke-border);
+  border-radius: var(--ke-radius-full);
+  font-size: 0.8rem;
+  background: transparent;
+  color: var(--ke-text-secondary);
+  outline: none;
+  transition: all var(--ke-transition);
+}
+
+.kb-editor__tag-input:focus {
+  width: 120px;
+  border-color: var(--ke-primary);
+  border-style: solid;
+  color: var(--ke-text-primary);
+}
+
+.kb-editor__tag-input::placeholder {
+  color: var(--ke-text-muted);
 }
 
 /* Editor Content */
