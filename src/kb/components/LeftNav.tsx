@@ -6,6 +6,7 @@ interface LeftNavProps {
   folders: FolderType[]
   tags: string[]
   tagCounts?: Record<string, number>
+  mustReadNotes?: { id: string; title: string }[]
   inboxCount: number
   trashCount?: number
   selectedNav: LeftNavSection | string
@@ -14,6 +15,7 @@ interface LeftNavProps {
   onFolderSelect: (id: string) => void
   onFolderCreate?: (name: string) => void
   onTagClick: (tag: string) => void
+  onMustReadClick?: (noteId: string) => void
   onGraphClick: () => void
   onTimelineClick: () => void
   collapsed?: boolean
@@ -67,6 +69,7 @@ export const LeftNav: React.FC<LeftNavProps> = ({
   folders,
   tags,
   tagCounts = {},
+  mustReadNotes = [],
   inboxCount,
   trashCount = 0,
   selectedNav,
@@ -75,6 +78,7 @@ export const LeftNav: React.FC<LeftNavProps> = ({
   onFolderSelect,
   onFolderCreate,
   onTagClick,
+  onMustReadClick,
   onGraphClick,
   onTimelineClick,
   collapsed,
@@ -132,6 +136,31 @@ export const LeftNav: React.FC<LeftNavProps> = ({
             />
           </div>
         </div>
+
+        {/* Today Must-Read Section */}
+        {mustReadNotes.length > 0 && (
+          <div className="kb-left-nav__section">
+            <div className="kb-left-nav__header">
+              <span className={`kb-left-nav__header-text ${collapsed ? 'kb-left-nav__header-text--hidden' : ''}`}>
+                <span>📌</span>
+                <span>今日必读</span>
+              </span>
+              <span className="kb-left-nav__badge">{mustReadNotes.length}</span>
+            </div>
+            <div className="kb-must-read-list">
+              {mustReadNotes.map(note => (
+                <button
+                  key={note.id}
+                  className="kb-must-read-item"
+                  onClick={() => onMustReadClick?.(note.id)}
+                  title={note.title}
+                >
+                  <span className="kb-must-read-item__title">{note.title || '无标题'}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Tags - Moved up with frequency sorting and scrollbar */}
         <div className="kb-left-nav__section">

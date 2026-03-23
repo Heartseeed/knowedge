@@ -34,9 +34,14 @@ export type Note = {
   nextReviewAt: number
   easeFactor: number // SM-2 algorithm
   interval: number // days
+  // Custom review days (user-defined)
+  customReviewDays?: number
   // Pin and trash
   pinned?: boolean
   deletedAt?: number // timestamp when moved to trash, undefined means not deleted
+  // Today Must-Read feature
+  mustRead?: boolean
+  mustReadDate?: number // timestamp when marked as must-read
   // Sync fields
   isSynced?: boolean
   remoteId?: string // Supabase ID

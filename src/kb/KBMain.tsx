@@ -572,6 +572,9 @@ const KBMain: React.FC<KBMainProps> = ({
             })
             return acc
           }, {} as Record<string, number>)}
+          mustReadNotes={notes
+            .filter(n => n.mustRead && !n.deletedAt)
+            .map(n => ({ id: n.id, title: n.title }))}
           inboxCount={inboxNotes.length}
           trashCount={trashCount}
           selectedNav={selectedNav}
@@ -588,6 +591,13 @@ const KBMain: React.FC<KBMainProps> = ({
             setFolders(prev => [...prev, newFolder])
           }}
           onTagClick={handleTagClick}
+          onMustReadClick={(noteId) => {
+            const note = notes.find(n => n.id === noteId)
+            if (note) {
+              setSelectedNote(note)
+              setSelectedNav('folders')
+            }
+          }}
           onGraphClick={() => onNavigate?.('graph')}
           onTimelineClick={() => onNavigate?.('timeline')}
         />

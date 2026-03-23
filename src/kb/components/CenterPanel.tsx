@@ -107,6 +107,10 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
 }) => {
   const [editorMode, setEditorMode] = useState<EditorMode>('rich')
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
+  
+  // Split view second note
+  const [splitNoteId, setSplitNoteId] = useState<string | null>(null)
+  const splitNote = splitNoteId ? notes.find(n => n.id === splitNoteId) : null
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null)
   const [showTypeDropdown, setShowTypeDropdown] = useState(false)
   const [showVersionHistory, setShowVersionHistory] = useState(false)
@@ -569,6 +573,47 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
                       <><Inbox size={12} /> 待整理</>
                     )}
                   </span>
+                  
+                  {/* Must Read Toggle */}
+                  <button
+                    className={`kb-editor__must-read ${selectedNote.mustRead ? 'kb-editor__must-read--active' : ''}`}
+                    onClick={() => handleNoteUpdate({
+                      ...selectedNote,
+                      mustRead: !selectedNote.mustRead,
+                      mustReadDate: !selectedNote.mustRead ? Date.now() : undefined
+                    })}
+                    title={selectedNote.mustRead ? '取消今日必读' : '标记为今日必读'}
+                  >
+                    <span className="kb-editor__must-read-icon">📌</span>
+                    <span>{selectedNote.mustRead ? '今日必读' : '标记必读'}</span>
+                  </button>
+                  
+                  {/* Custom Review Days */}
+                  <div className="kb-editor__review-days">
+                    <span className="kb-editor__review-days-label">回顾:</span>
+                    <select
+                      className="kb-editor__review-days-select"
+                      value={selectedNote.customReviewDays || ''}
+                      onChange={(e) => {
+                        const days = e.target.value ? parseInt(e.target.value) : undefined
+                        const updatedNote = {
+                          ...selectedNote,
+                          customReviewDays: days,
+                          nextReviewAt: days ? Date.now() + days * 24 * 60 * 60 * 1000 : selectedNote.nextReviewAt
+                        }
+                        handleNoteUpdate(updatedNote)
+                      }}
+                      title="设置自定义回顾天数"
+                    >
+                      <option value="">系统默认</option>
+                      <option value="1">1天后</option>
+                      <option value="3">3天后</option>
+                      <option value="7">7天后</option>
+                      <option value="14">14天后</option>
+                      <option value="30">30天后</option>
+                      <option value="90">90天后</option>
+                    </select>
+                  </div>
                 </div>
                 
                 <h1 className="kb-editor__title">{selectedNote.title}</h1>
@@ -640,18 +685,93 @@ export const CenterPanel: React.FC<CenterPanelProps> = ({
               </div>
 
               {/* Editor */}
-              <div className="kb-editor__content">
-                <TipTapEditor
-                  ref={editorRef}
-                  note={selectedNote}
-                  notes={notes}
-                  onChange={handleNoteUpdate}
-                  onSave={() => {}}
-                  viewMode={viewMode}
-                  editorMode={editorMode}
-                  onEditorModeChange={setEditorMode}
-                />
-              </div>
+              {viewMode === 'split' ? (
+                // Split view - two notes side by side
+                <div className="kb-editor__dual">
+                  {/* Left Panel - Primary Note */}
+                  <div className="kb-editor__dual-panel kb-editor__dual-panel--left">
+                    <div className="kb-editor__dual-header">
+                      <span className="kb-editor__dual-label">主笔记</span>
+                      <span className="kb-editor__dual-title">{selectedNote.title || '无标题'}</span>
+                    </div>
+                    <div className="kb-editor__dual-content">
+                      <TipTapEditor
+                        ref={editorRef}
+                        note={selectedNote}
+                        notes={notes}
+                        onChange={handleNoteUpdate}
+                        onSave={() => {}}
+                        viewMode="edit"
+                        editorMode={editorMode}
+                        onEditorModeChange={setEditorMode}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Divider */}
+                  <div className="kb-editor__dual-divider" />
+                  
+                  {/* Right Panel - Secondary Note or Note Selector */}
+                  <div className="kb-editor__dual-panel kb-editor__dual-panel--right">
+                    {splitNote ? (
+                      <>
+                        <div className="kb-editor__dual-header">
+                          <span className="kb-editor__dual-label">对比笔记</span>
+                          <span className="kb-editor__dual-title">{splitNote.title || '无标题'}</span>
+                          <button 
+                            className="kb-editor__dual-close"
+                            onClick={() => setSplitNoteId(null)}
+                            title="关闭对比"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                        <div className="kb-editor__dual-content">
+                          <TipTapEditor
+                            note={splitNote}
+                            notes={notes}
+                            onChange={(updatedNote) => onNoteChange?.(updatedNote)}
+                            onSave={() => {}}
+                            viewMode="edit"
+                            editorMode={editorMode}
+                            onEditorModeChange={setEditorMode}
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="kb-editor__dual-empty">
+                        <p>选择另一篇笔记进行对比</p>
+                        <div className="kb-editor__dual-selector">
+                          {notes.filter(n => n.id !== selectedNote.id && !n.deletedAt).slice(0, 5).map(note => (
+                            <button
+                              key={note.id}
+                              className="kb-editor__dual-option"
+                              onClick={() => setSplitNoteId(note.id)}
+                            >
+                              <span className="kb-editor__dual-option-title">{note.title || '无标题'}</span>
+                              <span className="kb-editor__dual-option-type">{note.type}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                // Normal single view
+                <div className="kb-editor__content">
+                  <TipTapEditor
+                    ref={editorRef}
+                    note={selectedNote}
+                    notes={notes}
+                    onChange={handleNoteUpdate}
+                    onSave={() => {}}
+                    viewMode={viewMode}
+                    editorMode={editorMode}
+                    onEditorModeChange={setEditorMode}
+                  />
+                </div>
+              )}
             </>
           ) : (
             <div className="kb-editor__empty">
